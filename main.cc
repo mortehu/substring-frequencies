@@ -8,6 +8,7 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <sysexits.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -16,7 +17,17 @@
 
 #define DELIMITER '\0'
 
-static bool skip_samecount_prefixes = false;
+static int print_version;
+static int print_help;
+static int skip_samecount_prefixes;
+
+static struct option long_options[] =
+{
+  { "skip-prefixes",  no_argument, &skip_samecount_prefixes, 1 },
+  { "version",        no_argument, &print_version, 1 },
+  { "help",           no_argument, &print_help,    1 },
+  { 0, 0, 0, 0 }
+};
 
 static const char *input0;
 static saidx_t *input0_suffixes;
@@ -236,27 +247,62 @@ main (int argc, char **argv)
 {
   long input0_threshold = 2, input1_threshold = LONG_MAX;
   char *endptr;
+  int i;
 
-  if (argc < 3 || argc > 5)
-    errx (EX_USAGE, "Usage: %s INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]", argv[0]);
-
-  input0 = (const char *) map_file (argv[1], &input0_size);
-  input1 = (const char *) map_file (argv[2], &input1_size);
-
-  if (argc >= 4)
+  while ((i = getopt_long (argc, argv, "", long_options, 0)) != -1)
     {
-      input0_threshold = strtol (argv[3], &endptr, 0);
+      switch (i)
+        {
+        case 0:
+
+          break;
+
+        case '?':
+
+          fprintf (stderr, "Try `%s --help' for more information.\n", argv[0]);
+
+          return EXIT_FAILURE;
+        }
+    }
+
+  if (print_help)
+    {
+      printf ("Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]\n"
+              "\n"
+              "      --skip-prefixes        skip prefixes with identical positive\n"
+              "                             counts\n"
+              "      --help     display this help and exit\n"
+              "      --version  display version information\n"
+              "\n"
+              "Report bugs to <morten.hustveit@gmail.com>\n",
+              argv[0]);
+
+      return EXIT_SUCCESS;
+    }
+
+  if (print_version)
+    errx (EXIT_SUCCESS, "%s", PACKAGE_STRING);
+
+  if (optind + 2 > argc || optind + 4 < argc)
+    errx (EX_USAGE, "Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]", argv[0]);
+
+  input0 = (const char *) map_file (argv[optind++], &input0_size);
+  input1 = (const char *) map_file (argv[optind++], &input1_size);
+
+  if (optind < argc)
+    {
+      input0_threshold = strtol (argv[optind++], &endptr, 0);
 
       if (*endptr || input0_threshold <= 0)
         errx (EX_USAGE, "Parse error in INPUT1-MIN.  Expected integer greater than or equal to 2");
+    }
 
-      if (argc >= 5)
-        {
-          input1_threshold = strtol (argv[4], &endptr, 0);
+  if (optind < argc)
+    {
+      input1_threshold = strtol (argv[optind++], &endptr, 0);
 
-          if (*endptr || input1_threshold < 0)
-            errx (EX_USAGE, "Parse error in INPUT2-MAX.  Expected non-negative integer");
-        }
+      if (*endptr || input1_threshold < 0)
+        errx (EX_USAGE, "Parse error in INPUT2-MAX.  Expected non-negative integer");
     }
 
   if (!(input0_suffixes = (saidx_t *) calloc (sizeof (*input0_suffixes), input0_size)))
