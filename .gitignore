@@ -1,0 +1,15 @@
+*.cache
+*.log
+*.o
+*.status
+.*.sw?
+.deps/
+Makefile
+Makefile.in
+aclocal.m4
+configure
+configure.scan
+depcomp
+install-sh
+missing
+substring-frequencies
