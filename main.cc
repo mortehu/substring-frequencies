@@ -104,15 +104,20 @@ find_substrings (long input0_threshold, long input1_threshold)
           size_t count = 2;
           size_t j = i + 1;
 
-          for (size_t length = prefix; j < input0_size && length > previous_prefix; )
+          for (size_t length = prefix; j <= input0_size && length > previous_prefix; )
             {
               const char *test;
               size_t test_prefix;
 
-              test = input0 + input0_suffixes[j];
+              if (j < input0_size)
+                {
+                  test = input0 + input0_suffixes[j];
 
-              test_prefix = common_prefix (current, test,
-                                           std::min ((size_t) (input0_end - test), length));
+                  test_prefix = common_prefix (current, test,
+                                               std::min ((size_t) (input0_end - test), length));
+                }
+              else
+                test_prefix = 0;
 
               if (test_prefix < length)
                 {
