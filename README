@@ -2,7 +2,7 @@ This program takes two files as inputs, and prints the strings that occur at
 least twice in the first input, together with the number of times they occur in
 the second input.
 
-The user can provide thresholds so that only strings thatat occur at least X
+The user can provide thresholds so that only strings that occur at least X
 times in input 1 are printed, and only strings that occur at most Y times in
 input 2 are printed.
 
