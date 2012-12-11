@@ -30,3 +30,10 @@ GPL-2.
 
 The `--skip-prefixes' option prevents listing "covered wor" when "covered work"
 is already listed, provided both have the exact same positive counts.
+
+Building:
+
+  $ autoreconf -f -i
+  $ ./configure
+  $ make
+  # make install
