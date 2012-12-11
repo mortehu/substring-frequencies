@@ -164,17 +164,15 @@ find_substrings (long input0_threshold, long input1_threshold)
 
                   cmp = memcmp (string1, s.text, cmp_length);
 
-                  if (cmp < 0 && length1 >= s.length)
+                  if (cmp > 0)
+                    break;
+
+                  if (cmp < 0 || length1 < s.length)
                     {
                       ++input1_offset;
 
                       continue;
                     }
-
-                  /* Shorter strings are sorted AFTER longer strings, so a
-                   * prefix match will not be followed by a full match */
-                  if (cmp > 0 || length1 < s.length)
-                    break;
 
                   /* Substring exists in set 1 */
                   input1_substring_count = 1;
