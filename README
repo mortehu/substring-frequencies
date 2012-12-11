@@ -29,4 +29,4 @@ text, but also never occur in GPL-2.  We can tell that "covered work" and
 GPL-2.
 
 The `--skip-prefixes' option prevents listing "covered wor" when "covered work"
-is already lists, provided both have the exact same positive counts.
+is already listed, provided both have the exact same positive counts.
