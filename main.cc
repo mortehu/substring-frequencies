@@ -16,6 +16,8 @@
 
 #define DELIMITER '\0'
 
+static bool skip_samecount_prefixes = false;
+
 static const char *input0;
 static saidx_t *input0_suffixes;
 static off_t input0_size;
@@ -116,7 +118,7 @@ find_substrings (long input0_threshold, long input1_threshold)
                 {
                   substring s;
 
-                  if (stack.empty () || stack.back ().count != count)
+                  if (stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
                     {
                       s.count = count;
                       s.length = length;
