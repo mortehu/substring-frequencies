@@ -131,17 +131,26 @@ struct compare_in_input1
   {
   }
 
-  bool operator()(const saidx_t &rhs, const char *lhs) const
+  /* Used by lower_bound.  Behaves like strcmp with regard to length */
+  bool operator()(const saidx_t &lhs, const char *rhs) const
     {
-      const char *rhs_string;
-      size_t rhs_length = input1_size - rhs;
+      size_t lhs_length = input1_size - lhs;
       int cmp;
 
-      rhs_string = input1 + rhs;
+      cmp = memcmp (input1 + lhs, rhs, std::min (length, lhs_length));
 
-      cmp = memcmp (rhs_string, lhs, std::min (length, rhs_length));
+      return (cmp < 0 || (cmp == 0 && lhs_length < length));
+    }
 
-      return (cmp < 0 || (cmp == 0 && rhs_length < length));
+  /* Used by upper_bound.  Only compares equality of prefix */
+  bool operator()(const char *lhs, const saidx_t &rhs) const
+    {
+      size_t rhs_length = input1_size - rhs;
+
+      if (rhs_length < length)
+        return true;
+
+      return 0 != memcmp (lhs, input1 + rhs, length);
     }
 
 private:
@@ -226,6 +235,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
           while (!stack.empty ())
             {
               size_t input1_substring_count = 0;
+              size_t input1_match_end;
 
               substring s = stack.back ();
               stack.pop_back ();
@@ -234,7 +244,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
               do
                 {
-                  end = input1_suffixes + std::min (input1_offset + 128, input1_size);
+                  end = input1_suffixes + std::min (input1_offset + 1024, input1_size);
 
                   search_result = std::lower_bound (input1_suffixes + input1_offset, end,
                                                     s.text, compare_in_input1 (s.length));
@@ -243,16 +253,20 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                 }
               while (search_result == end && end != input1_suffixes + input1_size);
 
-              for (size_t k = input1_offset; k < input1_size; ++k)
+              input1_match_end = input1_offset;
+
+              do
                 {
-                  if (input1_size - input1_suffixes[k] < s.length)
-                    break;
+                  end = input1_suffixes + std::min (input1_match_end + 1024, input1_size);
 
-                  if (memcmp (input1 + input1_suffixes[k], s.text, s.length))
-                    break;
+                  search_result = std::upper_bound (input1_suffixes + input1_match_end, end,
+                                                    s.text, compare_in_input1 (s.length));
 
-                  ++input1_substring_count;
+                  input1_match_end = search_result - input1_suffixes;
                 }
+              while (search_result == end && end != input1_suffixes + input1_size);
+
+              input1_substring_count = input1_match_end - input1_offset;
 
               if (input1_substring_count > input1_threshold)
                 continue;
