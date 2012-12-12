@@ -20,12 +20,16 @@
 static int print_version;
 static int print_help;
 static int skip_samecount_prefixes;
+static int do_probability;
+static double prior_bias;
 
 static struct option long_options[] =
 {
-  { "skip-prefixes",  no_argument, &skip_samecount_prefixes, 1 },
-  { "version",        no_argument, &print_version, 1 },
-  { "help",           no_argument, &print_help,    1 },
+  { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
+  { "probability",       no_argument,       &do_probability,          1 },
+  { "prior-bias",        required_argument, NULL,                     'p' },
+  { "version",           no_argument,       &print_version,           1 },
+  { "help",              no_argument,       &print_help,              1 },
   { 0, 0, 0, 0 }
 };
 
@@ -36,6 +40,9 @@ static off_t input0_size;
 static const char *input1;
 static saidx_t *input1_suffixes;
 static off_t input1_size;
+
+static std::vector<size_t> input0_n_gram_counts;
+static std::vector<size_t> input1_n_gram_counts;
 
 static void *
 map_file (const char *path, off_t *ret_size)
@@ -205,7 +212,30 @@ find_substrings (long input0_threshold, long input1_threshold)
               if (input1_substring_count > input1_threshold)
                 continue;
 
-              printf ("%zu\t%zu\t", s.count, input1_substring_count);
+              if (do_probability)
+                {
+                  size_t n_gram_count0 = 0, n_gram_count1 = 0;
+
+                  if (s.length < input0_n_gram_counts.size ())
+                    n_gram_count0 = input0_n_gram_counts[s.length];
+
+                  if (s.length < input1_n_gram_counts.size ())
+                    n_gram_count1 = input1_n_gram_counts[s.length];
+
+                  /* A = N-gram belongs in set 0
+                   * Bx = N-gram `x' is observed
+                   */
+
+                  /* P(A) */
+                  double P_A = (double) n_gram_count0 / (n_gram_count0 + n_gram_count1);
+
+                  /* P(A|Bx + prior bias) */
+                  double P_A_Bx = (double) (s.count + prior_bias) / (s.count + input1_substring_count + prior_bias / P_A);
+
+                  printf ("%.7f\t", P_A_Bx);
+                }
+              else
+                printf ("%zu\t%zu\t", s.count, input1_substring_count);
 
               for (const char *ch = s.text; ch != s.text + s.length; ++ch)
                 {
@@ -242,6 +272,36 @@ find_substrings (long input0_threshold, long input1_threshold)
     }
 }
 
+std::vector<size_t>
+count_n_grams (const char *text, size_t text_size)
+{
+  const char *text_end = text + text_size;
+  const char *ch, *next;
+
+  std::vector<size_t> result;
+
+  ch = text;
+
+  while (ch != text_end)
+    {
+      if (!(next = (const char *) memchr (ch, DELIMITER, text_end - ch)))
+        next = text_end;
+
+      if (result.size () <= next - ch)
+        result.resize (next - ch + 1);
+
+      for (size_t i = 1; i <= next - ch; ++i)
+        ++result[i];
+
+      if (next == text_end)
+        break;
+
+      ch = next + 1;
+    }
+
+  return result;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -257,6 +317,15 @@ main (int argc, char **argv)
 
           break;
 
+        case 'p':
+
+          prior_bias = strtod (optarg, &endptr);
+
+          if (*endptr)
+            errx (EX_USAGE, "Parse error in prior bias, expected decimal fraction");
+
+          break;
+
         case '?':
 
           fprintf (stderr, "Try `%s --help' for more information.\n", argv[0]);
@@ -269,10 +338,16 @@ main (int argc, char **argv)
     {
       printf ("Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]\n"
               "\n"
-              "      --skip-prefixes        skip prefixes with identical positive\n"
-              "                             counts\n"
+              "      --skip-prefixes        skip prefixes with identical positive counts\n"
+              "      --probability          give probability¹ rather than counts\n"
+              "      --prior-bias=BIAS      assign BIAS to prior probability\n"
               "      --help     display this help and exit\n"
               "      --version  display version information\n"
+              "\n"
+              "1. The probability returned is the probability that a given N-gram belongs in\n"
+              "   INPUT-1.  If the input sample is incomplete, you may want to assign some\n"
+              "   bias in favor of the prior (i.e. additive smoothing).  A bias of 1 is a\n"
+              "   good starting point.\n"
               "\n"
               "Report bugs to <morten.hustveit@gmail.com>\n",
               argv[0]);
@@ -310,6 +385,12 @@ main (int argc, char **argv)
 
   if (!(input1_suffixes = (saidx_t *) calloc (sizeof (*input1_suffixes), input1_size)))
     errx (EX_OSERR, "calloc failed");
+
+  if (do_probability)
+    {
+      input0_n_gram_counts = count_n_grams (input0, input0_size);
+      input1_n_gram_counts = count_n_grams (input1, input1_size);
+    }
 
   divsufsort ((const sauchar_t *) input0, input0_suffixes, input0_size);
 
