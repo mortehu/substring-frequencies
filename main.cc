@@ -74,9 +74,9 @@ common_prefix (const char *lhs, const char *rhs, size_t length)
 
 struct substring
 {
-  unsigned int count;
-  size_t length;
   const char *text;
+  size_t length;
+  size_t count;
 };
 
 static void
