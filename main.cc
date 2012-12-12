@@ -22,12 +22,14 @@ static int print_help;
 static int skip_samecount_prefixes;
 static int do_probability;
 static double prior_bias;
+static double threshold;
 
 static struct option long_options[] =
 {
   { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
   { "probability",       no_argument,       &do_probability,          1 },
   { "prior-bias",        required_argument, NULL,                     'p' },
+  { "threshold",         required_argument, NULL,                     't' },
   { "version",           no_argument,       &print_version,           1 },
   { "help",              no_argument,       &print_help,              1 },
   { 0, 0, 0, 0 }
@@ -232,6 +234,9 @@ find_substrings (long input0_threshold, long input1_threshold)
                   /* P(A|Bx + prior bias) */
                   double P_A_Bx = (double) (s.count + prior_bias) / (s.count + input1_substring_count + prior_bias / P_A);
 
+                  if (P_A_Bx < threshold)
+                    continue;
+
                   printf ("%.7f\t", P_A_Bx);
                 }
               else
@@ -326,6 +331,15 @@ main (int argc, char **argv)
 
           break;
 
+        case 't':
+
+          threshold = strtod (optarg, &endptr);
+
+          if (*endptr)
+            errx (EX_USAGE, "Parse error in probability threshold, expected decimal fraction");
+
+          break;
+
         case '?':
 
           fprintf (stderr, "Try `%s --help' for more information.\n", argv[0]);
@@ -341,6 +355,7 @@ main (int argc, char **argv)
               "      --skip-prefixes        skip prefixes with identical positive counts\n"
               "      --probability          give probability¹ rather than counts\n"
               "      --prior-bias=BIAS      assign BIAS to prior probability\n"
+              "      --threshold=PROB       set minimum probability for output\n"
               "      --help     display this help and exit\n"
               "      --version  display version information\n"
               "\n"
