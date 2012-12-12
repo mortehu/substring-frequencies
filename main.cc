@@ -293,7 +293,7 @@ main (int argc, char **argv)
     {
       input0_threshold = strtol (argv[optind++], &endptr, 0);
 
-      if (*endptr || input0_threshold <= 0)
+      if (*endptr || input0_threshold < 2)
         errx (EX_USAGE, "Parse error in INPUT1-MIN.  Expected integer greater than or equal to 2");
     }
 
