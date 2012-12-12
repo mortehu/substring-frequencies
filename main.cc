@@ -22,7 +22,7 @@ static int print_version;
 static int print_help;
 static int skip_samecount_prefixes;
 static int do_probability;
-static int do_regex;
+static int do_unique;
 static double prior_bias;
 static double threshold;
 
@@ -30,7 +30,7 @@ static struct option long_options[] =
 {
   { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
   { "probability",       no_argument,       &do_probability,          1 },
-  { "regex",             no_argument,       &do_regex, 1 },
+  { "unique-substrings", no_argument,       &do_unique,               1 },
   { "prior-bias",        required_argument, NULL,                     'p' },
   { "threshold",         required_argument, NULL,                     't' },
   { "version",           no_argument,       &print_version,           1 },
@@ -92,6 +92,37 @@ struct substring
   size_t length;
   size_t count;
 };
+
+template<typename I>
+static void
+print_string (I ch, size_t length)
+{
+  for (; length--; ++ch)
+    {
+      if (isprint (*ch))
+        {
+          putchar (*ch);
+
+          continue;
+        }
+
+      putchar ('\\');
+
+      switch (*ch)
+        {
+        case '\0': putchar ('0'); break;
+        case '\a': putchar ('a'); break;
+        case '\b': putchar ('b'); break;
+        case '\t': putchar ('t'); break;
+        case '\n': putchar ('n'); break;
+        case '\v': putchar ('v'); break;
+        case '\f': putchar ('f'); break;
+        case '\r': putchar ('r'); break;
+        case '\\': putchar ('\\'); break;
+        default: printf ("%03o", (unsigned char) *ch);
+        }
+    }
+}
 
 static void
 find_substrings (long input0_threshold, long input1_threshold)
@@ -240,48 +271,23 @@ find_substrings (long input0_threshold, long input1_threshold)
                   if (P_A_Bx < threshold)
                     continue;
 
-                  if (!do_regex)
+                  if (!do_unique)
                     printf ("%.7f\t", P_A_Bx);
                 }
               else
                 {
-                  if (!do_regex)
+                  if (!do_unique)
                     printf ("%zu\t%zu\t", s.count, input1_substring_count);
                 }
 
-              if (do_regex)
+              if (do_unique)
                 {
                   matches.push_back (std::string (s.text, s.text + s.length));
 
                   continue;
                 }
 
-              for (const char *ch = s.text; ch != s.text + s.length; ++ch)
-                {
-                  if (isprint (*ch))
-                    {
-                      putchar (*ch);
-
-                      continue;
-                    }
-
-                  putchar ('\\');
-
-                  switch (*ch)
-                    {
-                    case '\0': putchar ('0'); break;
-                    case '\a': putchar ('a'); break;
-                    case '\b': putchar ('b'); break;
-                    case '\t': putchar ('t'); break;
-                    case '\n': putchar ('n'); break;
-                    case '\v': putchar ('v'); break;
-                    case '\f': putchar ('f'); break;
-                    case '\r': putchar ('r'); break;
-                    case '\\': putchar ('\\'); break;
-                    default: printf ("%03o", (unsigned char) *ch);
-                    }
-                }
-
+              print_string (s.text, s.length);
               putchar ('\n');
             }
         }
@@ -350,7 +356,7 @@ private:
 };
 
 static void
-generate_regex (void)
+print_unique (void)
 {
   std::string previous;
   std::vector<std::string> unique_substrings;
@@ -368,48 +374,13 @@ generate_regex (void)
       unique_substrings.push_back (*i);
     }
 
-  putchar ('(');
+  std::sort (unique_substrings.begin (), unique_substrings.end ());
 
   for (i = unique_substrings.begin (); i != unique_substrings.end (); ++i)
     {
-      if (i != unique_substrings.begin ())
-        putchar ('|');
-
-      std::string::const_iterator j;
-
-      /* XXX: This loop does not support non-ASCII Unicode */
-
-      for (j = i->begin (); j != i->end (); ++j)
-        {
-          unsigned char ch = *j;
-
-          if (isalnum (ch) || ch == ' ')
-            {
-              putchar (ch);
-
-              continue;
-            }
-
-          putchar ('\\');
-
-          if (ch <= 0x1f)
-            {
-              putchar ('c');
-              putchar ('@' + ch);
-
-              continue;
-            }
-
-          switch (ch)
-            {
-            case '.':
-            case '\\': putchar (ch); break;
-            default: printf ("u%04x", ch);
-            }
-        }
+      print_string (i->begin (), i->length ());
+      putchar ('\n');
     }
-
-  printf (")\n");
 }
 
 int
@@ -461,6 +432,9 @@ main (int argc, char **argv)
               "      --probability          give probability¹ rather than counts\n"
               "      --prior-bias=BIAS      assign BIAS to prior probability\n"
               "      --threshold=PROB       set minimum probability for output\n"
+              "      --unique-substrings    suppress normal output and print only the\n"
+              "                             unqiue substrings that meet the required\n"
+              "                             threshold\n"
               "      --help     display this help and exit\n"
               "      --version  display version information\n"
               "\n"
@@ -516,10 +490,13 @@ main (int argc, char **argv)
 
   divsufsort ((const sauchar_t *) input1, input1_suffixes, input1_size);
 
+  if (do_unique)
+    skip_samecount_prefixes = 1;
+
   find_substrings (input0_threshold, input1_threshold);
 
-  if (do_regex)
-    generate_regex ();
+  if (do_unique)
+    print_unique ();
 
   return EXIT_SUCCESS;
 }
