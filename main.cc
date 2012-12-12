@@ -40,11 +40,11 @@ static struct option long_options[] =
 
 static const char *input0;
 static saidx_t *input0_suffixes;
-static off_t input0_size;
+static size_t input0_size;
 
 static const char *input1;
 static saidx_t *input1_suffixes;
-static off_t input1_size;
+static size_t input1_size;
 
 static std::vector<size_t> input0_n_gram_counts;
 static std::vector<size_t> input1_n_gram_counts;
@@ -52,7 +52,7 @@ static std::vector<size_t> input1_n_gram_counts;
 static std::vector<std::string> matches;
 
 static void *
-map_file (const char *path, off_t *ret_size)
+map_file (const char *path, size_t *ret_size)
 {
   off_t size;
   void *map = NULL;
@@ -125,7 +125,7 @@ print_string (I ch, size_t length)
 }
 
 static void
-find_substrings (long input0_threshold, long input1_threshold)
+find_substrings (size_t input0_threshold, size_t input1_threshold)
 {
   size_t input1_offset = 0;
 
