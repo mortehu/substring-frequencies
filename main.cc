@@ -176,6 +176,9 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
   std::vector<substring> stack;
 
+  /* XXX: We actually only need to calculate `common_prefix' for all adjacent
+   * suffixes, and use this to infer the calculated value */
+
   for (size_t i = 1; i < input0_size; ++i)
     {
       const char *current;
