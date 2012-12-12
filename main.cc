@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include <err.h>
@@ -21,6 +22,7 @@ static int print_version;
 static int print_help;
 static int skip_samecount_prefixes;
 static int do_probability;
+static int do_regex;
 static double prior_bias;
 static double threshold;
 
@@ -28,6 +30,7 @@ static struct option long_options[] =
 {
   { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
   { "probability",       no_argument,       &do_probability,          1 },
+  { "regex",             no_argument,       &do_regex, 1 },
   { "prior-bias",        required_argument, NULL,                     'p' },
   { "threshold",         required_argument, NULL,                     't' },
   { "version",           no_argument,       &print_version,           1 },
@@ -45,6 +48,8 @@ static off_t input1_size;
 
 static std::vector<size_t> input0_n_gram_counts;
 static std::vector<size_t> input1_n_gram_counts;
+
+static std::vector<std::string> matches;
 
 static void *
 map_file (const char *path, off_t *ret_size)
@@ -235,10 +240,21 @@ find_substrings (long input0_threshold, long input1_threshold)
                   if (P_A_Bx < threshold)
                     continue;
 
-                  printf ("%.7f\t", P_A_Bx);
+                  if (!do_regex)
+                    printf ("%.7f\t", P_A_Bx);
                 }
               else
-                printf ("%zu\t%zu\t", s.count, input1_substring_count);
+                {
+                  if (!do_regex)
+                    printf ("%zu\t%zu\t", s.count, input1_substring_count);
+                }
+
+              if (do_regex)
+                {
+                  matches.push_back (std::string (s.text, s.text + s.length));
+
+                  continue;
+                }
 
               for (const char *ch = s.text; ch != s.text + s.length; ++ch)
                 {
@@ -303,6 +319,97 @@ count_n_grams (const char *text, size_t text_size)
     }
 
   return result;
+}
+
+struct length_comparator
+{
+  bool operator() (const std::string &lhs, const std::string &rhs) const
+    {
+      if (lhs.length () != rhs.length ())
+        return lhs.length () < rhs.length ();
+
+      return lhs < rhs;
+    }
+};
+
+struct superstring_comparator
+{
+  superstring_comparator (const std::string &base)
+    : base(base)
+    {
+    }
+
+  bool operator() (const std::string &rhs) const
+    {
+      return std::string::npos != base.find (rhs);
+    }
+
+private:
+
+  std::string base;
+};
+
+static void
+generate_regex (void)
+{
+  std::string previous;
+  std::vector<std::string> unique_substrings;
+
+  std::sort (matches.begin (), matches.end (), length_comparator ());
+
+  std::vector<std::string>::const_iterator i;
+
+  for (i = matches.begin (); i != matches.end (); ++i)
+    {
+      if (unique_substrings.end () != std::find_if (unique_substrings.begin (), unique_substrings.end (),
+                                                    superstring_comparator (*i)))
+        continue;
+
+      unique_substrings.push_back (*i);
+    }
+
+  putchar ('(');
+
+  for (i = unique_substrings.begin (); i != unique_substrings.end (); ++i)
+    {
+      if (i != unique_substrings.begin ())
+        putchar ('|');
+
+      std::string::const_iterator j;
+
+      /* XXX: This loop does not support non-ASCII Unicode */
+
+      for (j = i->begin (); j != i->end (); ++j)
+        {
+          unsigned char ch = *j;
+
+          if (isalnum (ch) || ch == ' ')
+            {
+              putchar (ch);
+
+              continue;
+            }
+
+          putchar ('\\');
+
+          if (ch <= 0x1f)
+            {
+              putchar ('c');
+              putchar ('@' + ch);
+
+              continue;
+            }
+
+          switch (ch)
+            {
+            case '.':
+            case '\\': putchar (ch); break;
+            default: printf ("u%04x", ch);
+            }
+        }
+    }
+
+  printf (")\n");
 }
 
 int
@@ -410,6 +517,9 @@ main (int argc, char **argv)
   divsufsort ((const sauchar_t *) input1, input1_suffixes, input1_size);
 
   find_substrings (input0_threshold, input1_threshold);
+
+  if (do_regex)
+    generate_regex ();
 
   return EXIT_SUCCESS;
 }
