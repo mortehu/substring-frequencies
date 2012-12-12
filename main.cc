@@ -124,6 +124,31 @@ print_string (I ch, size_t length)
     }
 }
 
+struct compare_in_input1
+{
+  compare_in_input1 (size_t length)
+    : length(length)
+  {
+  }
+
+  bool operator()(const saidx_t &rhs, const char *lhs) const
+    {
+      const char *rhs_string;
+      size_t rhs_length = input1_size - rhs;
+      int cmp;
+
+      rhs_string = input1 + rhs;
+
+      cmp = memcmp (rhs_string, lhs, std::min (length, rhs_length));
+
+      return (cmp < 0 || (cmp == 0 && rhs_length < length));
+    }
+
+private:
+
+  size_t length;
+};
+
 static void
 find_substrings (size_t input0_threshold, size_t input1_threshold)
 {
@@ -205,44 +230,28 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
               substring s = stack.back ();
               stack.pop_back ();
 
-              while (input1_offset < input1_size && input1_substring_count <= input1_threshold)
+              saidx_t *end, *search_result;
+
+              do
                 {
-                  const char *string1;
-                  size_t length1, cmp_length;
-                  int cmp;
+                  end = input1_suffixes + std::min (input1_offset + 128, input1_size);
 
-                  string1 = input1 + input1_suffixes[input1_offset];
-                  length1 = input1_size - input1_suffixes[input1_offset];
+                  search_result = std::lower_bound (input1_suffixes + input1_offset, end,
+                                                    s.text, compare_in_input1 (s.length));
 
-                  cmp_length = std::min (s.length, length1);
+                  input1_offset = search_result - input1_suffixes;
+                }
+              while (search_result == end && end != input1_suffixes + input1_size);
 
-                  cmp = memcmp (string1, s.text, cmp_length);
-
-                  if (cmp > 0)
+              for (size_t k = input1_offset; k < input1_size; ++k)
+                {
+                  if (input1_size - input1_suffixes[k] < s.length)
                     break;
 
-                  if (cmp < 0 || length1 < s.length)
-                    {
-                      ++input1_offset;
+                  if (memcmp (input1 + input1_suffixes[k], s.text, s.length))
+                    break;
 
-                      continue;
-                    }
-
-                  /* Substring exists in set 1 */
-                  input1_substring_count = 1;
-
-                  for (size_t k = input1_offset + 1; k < input1_size; ++k)
-                    {
-                      if (input1_size - input1_suffixes[k] < s.length)
-                        break;
-
-                      if (memcmp (input1 + input1_suffixes[k], s.text, s.length))
-                        break;
-
-                      ++input1_substring_count;
-                    }
-
-                  break;
+                  ++input1_substring_count;
                 }
 
               if (input1_substring_count > input1_threshold)
