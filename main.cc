@@ -143,7 +143,8 @@ find_substrings (long input0_threshold, long input1_threshold)
                 {
                   substring s;
 
-                  if (stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
+                  if ((stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
+                      && s.count >= input0_threshold)
                     {
                       s.count = count;
                       s.length = length;
@@ -168,10 +169,7 @@ find_substrings (long input0_threshold, long input1_threshold)
               substring s = stack.back ();
               stack.pop_back ();
 
-              if (s.count < input0_threshold)
-                continue;
-
-              while (input1_offset < input1_size)
+              while (input1_offset < input1_size && input1_substring_count <= input1_threshold)
                 {
                   const char *string1;
                   size_t length1, cmp_length;
