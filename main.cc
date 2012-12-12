@@ -55,7 +55,7 @@ static void *
 map_file (const char *path, off_t *ret_size)
 {
   off_t size;
-  void *map;
+  void *map = NULL;
   int fd;
 
   if (-1 == (fd = open (path, O_RDONLY)))
@@ -64,7 +64,7 @@ map_file (const char *path, off_t *ret_size)
   if (-1 == (size = lseek (fd, 0, SEEK_END)))
     err (EX_IOERR, "Could not seek to end of '%s'", path);
 
-  if (MAP_FAILED == (map = mmap (NULL, size, PROT_READ, MAP_SHARED, fd, 0)))
+  if (size && MAP_FAILED == (map = mmap (NULL, size, PROT_READ, MAP_SHARED, fd, 0)))
     err (EX_IOERR, "Could not memory-map '%s'", path);
 
   close (fd);
