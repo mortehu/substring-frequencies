@@ -110,7 +110,6 @@ print_string (I ch, size_t length)
 
       switch (*ch)
         {
-        case '\0': putchar ('0'); break;
         case '\a': putchar ('a'); break;
         case '\b': putchar ('b'); break;
         case '\t': putchar ('t'); break;
