@@ -215,8 +215,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                 {
                   substring s;
 
-                  if ((stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
-                      && s.count >= input0_threshold)
+                  if (stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
                     {
                       s.count = count;
                       s.length = length;
@@ -241,6 +240,9 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
               substring s = stack.back ();
               stack.pop_back ();
+
+              if (s.count < input0_threshold)
+                continue;
 
               saidx_t *end, *search_result;
 
