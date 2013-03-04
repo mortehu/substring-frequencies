@@ -339,10 +339,10 @@ count_n_grams (const char *text, size_t text_size)
       if (!(next = (const char *) memchr (ch, DELIMITER, text_end - ch)))
         next = text_end;
 
-      if (result.size () <= next - ch)
+      if (result.size () <= (size_t) (next - ch))
         result.resize (next - ch + 1);
 
-      for (size_t i = 1; i <= next - ch; ++i)
+      for (size_t i = 1; i <= (size_t) (next - ch); ++i)
         ++result[i];
 
       if (next == text_end)
@@ -408,6 +408,21 @@ print_unique (void)
       print_string (i->begin (), i->length ());
       putchar ('\n');
     }
+}
+
+static void
+become_oom_friendly (void)
+{
+  static const char *setting = "1000";
+
+  int fd;
+
+  if (-1 == (fd = open ("/proc/self/oom_score_adj", O_WRONLY)))
+    return;
+
+  write (fd, setting, strlen (setting));
+
+  close (fd);
 }
 
 int
@@ -481,6 +496,8 @@ main (int argc, char **argv)
 
   if (optind + 2 > argc || optind + 4 < argc)
     errx (EX_USAGE, "Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]", argv[0]);
+
+  become_oom_friendly ();
 
   input0 = (const char *) map_file (argv[optind++], &input0_size);
   input1 = (const char *) map_file (argv[optind++], &input1_size);
