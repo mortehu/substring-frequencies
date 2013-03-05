@@ -1,9 +1,11 @@
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -23,16 +25,18 @@ static int print_help;
 static int skip_samecount_prefixes;
 static int do_probability;
 static int do_unique;
+static int do_document;
 static double prior_bias;
 static double threshold;
 
 static struct option long_options[] =
 {
-  { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
-  { "probability",       no_argument,       &do_probability,          1 },
-  { "unique-substrings", no_argument,       &do_unique,               1 },
+  { "documents",         no_argument,       &do_document,             1 },
   { "prior-bias",        required_argument, NULL,                     'p' },
+  { "probability",       no_argument,       &do_probability,          1 },
+  { "skip-prefixes",     no_argument,       &skip_samecount_prefixes, 1 },
   { "threshold",         required_argument, NULL,                     't' },
+  { "unique-substrings", no_argument,       &do_unique,               1 },
   { "version",           no_argument,       &print_version,           1 },
   { "help",              no_argument,       &print_help,              1 },
   { 0, 0, 0, 0 }
@@ -48,6 +52,9 @@ static size_t input1_size;
 
 static std::vector<size_t> input0_n_gram_counts;
 static std::vector<size_t> input1_n_gram_counts;
+
+static std::vector<size_t> input0_document_ends;
+static std::vector<size_t> input1_document_ends;
 
 static std::vector<std::string> matches;
 
@@ -158,6 +165,18 @@ private:
 };
 
 static void
+add_document (std::set<size_t> &documents,
+              const std::vector<size_t> document_ends,
+              size_t offset)
+{
+  std::vector<size_t>::const_iterator i;
+
+  i = std::lower_bound (document_ends.begin (), document_ends.end (), offset);
+
+  documents.insert (std::distance (document_ends.begin (), i));
+}
+
+static void
 find_substrings (size_t input0_threshold, size_t input1_threshold)
 {
   size_t input1_offset = 0;
@@ -187,11 +206,14 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
     }
 
   std::vector<substring> stack;
+  std::set<size_t> matching_documents;
 
   for (size_t i = 1; i < input0_size; ++i)
     {
       const char *current;
       size_t prefix;
+
+      matching_documents.clear ();
 
       current = input0 + input0_suffixes[i];
 
@@ -205,6 +227,17 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
           size_t count = 2;
           size_t j = i + 1;
 
+          if (do_document)
+            {
+              add_document (matching_documents,
+                            input0_document_ends,
+                            input0_suffixes[i - 1]);
+
+              add_document (matching_documents,
+                            input0_document_ends,
+                            input0_suffixes[i]);
+            }
+
           for (size_t length = prefix; j <= input0_size && length > previous_prefix; )
             {
               if (shared_prefixes[j - 1] < length)
@@ -213,7 +246,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
                   if (stack.empty () || (!skip_samecount_prefixes || stack.back ().count != count))
                     {
-                      s.count = count;
+                      s.count = do_document ? matching_documents.size () : count;
                       s.length = length;
                       s.text = input0 + input0_suffixes[i];
 
@@ -223,6 +256,13 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                   --length;
 
                   continue;
+                }
+
+              if (do_document)
+                {
+                  add_document (matching_documents,
+                                input0_document_ends,
+                                input0_suffixes[j]);
                 }
 
               ++count;
@@ -266,7 +306,21 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                 }
               while (search_result == end && end != input1_suffixes + input1_size);
 
-              input1_substring_count = input1_match_end - input1_offset;
+              if (do_document)
+                {
+                  matching_documents.clear ();
+
+                  for (size_t i = input1_offset; i != input1_match_end; ++i)
+                    {
+                      add_document (matching_documents,
+                                    input1_document_ends,
+                                    input1_suffixes[i]);
+                    }
+
+                  input1_substring_count = matching_documents.size ();
+                }
+              else
+                input1_substring_count = input1_match_end - input1_offset;
 
               if (input1_substring_count > input1_threshold)
                 continue;
@@ -420,6 +474,31 @@ become_oom_friendly (void)
   close (fd);
 }
 
+static void
+find_document_bounds (std::vector<size_t>& document_ends,
+                      const char *text, size_t text_size)
+{
+  const char *text_end = text + text_size;
+  const char *ch, *next;
+
+  ch = text;
+
+  while (ch != text_end)
+    {
+      if (!(next = (const char *) memchr (ch, DELIMITER, text_end - ch)))
+        next = text_end;
+
+      document_ends.push_back (next - text);
+
+      if (next == text_end)
+        break;
+
+      ch = next + 1;
+    }
+
+  assert (!document_ends.empty ());
+}
+
 int
 main (int argc, char **argv)
 {
@@ -465,6 +544,8 @@ main (int argc, char **argv)
     {
       printf ("Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]\n"
               "\n"
+              "      --document             count each prefix only once per document\n"
+              "                             documents are delimited by NUL characters\n"
               "      --skip-prefixes        skip prefixes with identical positive counts\n"
               "      --probability          give probability¹ rather than counts\n"
               "      --prior-bias=BIAS      assign BIAS to prior probability\n"
@@ -523,6 +604,12 @@ main (int argc, char **argv)
     {
       input0_n_gram_counts = count_n_grams (input0, input0_size);
       input1_n_gram_counts = count_n_grams (input1, input1_size);
+    }
+
+  if (do_document)
+    {
+      find_document_bounds (input0_document_ends, input0, input0_size);
+      find_document_bounds (input1_document_ends, input1, input1_size);
     }
 
   divsufsort ((const sauchar_t *) input0, input0_suffixes, input0_size);
