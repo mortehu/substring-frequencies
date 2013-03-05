@@ -5,8 +5,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <list>
 #include <set>
-#include <string>
 #include <vector>
 
 #include <err.h>
@@ -26,11 +26,13 @@ static int skip_samecount_prefixes;
 static int do_probability;
 static int do_unique;
 static int do_document;
+static int do_cover;
 static double prior_bias;
 static double threshold;
 
 static struct option long_options[] =
 {
+  { "cover",             no_argument,       &do_cover,                1 },
   { "documents",         no_argument,       &do_document,             1 },
   { "prior-bias",        required_argument, NULL,                     'p' },
   { "probability",       no_argument,       &do_probability,          1 },
@@ -56,7 +58,22 @@ static std::vector<size_t> input1_n_gram_counts;
 static std::vector<size_t> input0_document_ends;
 static std::vector<size_t> input1_document_ends;
 
-static std::vector<std::string> matches;
+struct match
+{
+  const char *string;
+  size_t string_length;
+
+  double score;
+
+  match (const char *string, size_t string_length, double score)
+    : string (string),
+      string_length (string_length),
+      score (score)
+  {
+  }
+};
+
+static std::vector<match> matches;
 
 static void *
 map_file (const char *path, size_t *ret_size)
@@ -274,6 +291,8 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
               size_t input1_substring_count = 0;
               size_t input1_match_end;
 
+              double P_A, P_A_Bx = 0;
+
               substring s = stack.back ();
               stack.pop_back ();
 
@@ -340,16 +359,16 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                    */
 
                   /* P(A) */
-                  double P_A = (double) n_gram_count0 / (n_gram_count0 + n_gram_count1);
+                  P_A = (double) n_gram_count0 / (n_gram_count0 + n_gram_count1);
 
                   /* P(A|Bx + prior bias) */
-                  double P_A_Bx = (double) (s.count + prior_bias) / (s.count + input1_substring_count + prior_bias / P_A);
+                  P_A_Bx = (double) (s.count + prior_bias) / (s.count + input1_substring_count + prior_bias / P_A);
 
                   if (P_A_Bx < threshold)
                     continue;
 
                   if (!do_unique)
-                    printf ("%.7f\t", P_A_Bx);
+                    printf ("%.9f\t", P_A_Bx);
                 }
               else
                 {
@@ -359,7 +378,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
               if (do_unique)
                 {
-                  matches.push_back (std::string (s.text, s.text + s.length));
+                  matches.push_back (match (s.text, s.length, P_A_Bx));
 
                   continue;
                 }
@@ -403,43 +422,124 @@ count_n_grams (const char *text, size_t text_size)
   return result;
 }
 
-struct length_comparator
+struct score_comparator
 {
-  bool operator() (const std::string &lhs, const std::string &rhs) const
+  bool operator() (const match &lhs, const match &rhs) const
     {
-      if (lhs.length () != rhs.length ())
-        return lhs.length () < rhs.length ();
+      if (lhs.score != rhs.score)
+        return lhs.score > rhs.score;
 
-      return lhs < rhs;
+      if (lhs.string_length != rhs.string_length)
+        return lhs.string_length > rhs.string_length;
+
+      return 0 >= memcmp (lhs.string, rhs.string, rhs.string_length);
     }
 };
 
+static void
+find_cover (void)
+{
+  std::list<std::pair<const char *, size_t> > remaining_documents;
+  const char *start = input0, *end;
+  size_t i;
+
+  std::sort (matches.begin (), matches.end (), score_comparator ());
+
+  for (i = 0; i < input0_document_ends.size (); ++i)
+    {
+      end = input0 + input0_document_ends[i];
+
+      remaining_documents.push_back (std::make_pair (start, end - start));
+
+      start = end + 1;
+    }
+
+  std::vector<match>::const_iterator j = matches.begin ();
+
+  for (j = matches.begin ();
+       j != matches.end () && !remaining_documents.empty (); ++j)
+    {
+      const char *string_begin = j->string;
+      size_t string_length = j->string_length;
+
+      std::list<std::pair<const char *, size_t> >::iterator k;
+      size_t hits = 0;
+
+      for (k = remaining_documents.begin ();
+           k != remaining_documents.end (); )
+        {
+          if (memmem (k->first, k->second,
+                      string_begin, string_length))
+            {
+              k = remaining_documents.erase (k);
+
+              ++hits;
+            }
+          else
+            ++k;
+        }
+
+      if (hits)
+        {
+          printf ("%zu\t", hits);
+          print_string (string_begin, string_length);
+          putchar ('\n');
+        }
+    }
+}
+
 struct superstring_comparator
 {
-  superstring_comparator (const std::string &base)
+  superstring_comparator (const match &base)
     : base(base)
     {
     }
 
-  bool operator() (const std::string &rhs) const
+  bool operator() (const match &rhs) const
     {
-      return std::string::npos != base.find (rhs);
+      return NULL != memmem (base.string, base.string_length,
+                             rhs.string, rhs.string_length);
     }
 
 private:
 
-  std::string base;
+  match base;
+};
+
+struct length_comparator
+{
+  bool operator() (const match &lhs, const match &rhs) const
+    {
+      if (lhs.string_length != rhs.string_length)
+        return lhs.string_length < rhs.string_length;
+
+      return 0 >= memcmp (lhs.string, rhs.string, lhs.string_length);
+    }
+};
+
+struct string_comparator
+{
+  bool operator() (const match &lhs, const match &rhs) const
+    {
+      int ret;
+
+      ret = memcmp (lhs.string, rhs.string, std::min (lhs.string_length, rhs.string_length));
+
+      if (ret == 0)
+        return (lhs.string_length < rhs.string_length);
+      else
+        return (ret < 0);
+    }
 };
 
 static void
 print_unique (void)
 {
-  std::string previous;
-  std::vector<std::string> unique_substrings;
+  std::vector<match> unique_substrings;
 
   std::sort (matches.begin (), matches.end (), length_comparator ());
 
-  std::vector<std::string>::const_iterator i;
+  std::vector<match>::const_iterator i;
 
   for (i = matches.begin (); i != matches.end (); ++i)
     {
@@ -450,11 +550,13 @@ print_unique (void)
       unique_substrings.push_back (*i);
     }
 
-  std::sort (unique_substrings.begin (), unique_substrings.end ());
+  std::sort (unique_substrings.begin (), unique_substrings.end (), string_comparator ());
 
-  for (i = unique_substrings.begin (); i != unique_substrings.end (); ++i)
+  std::vector<match>::const_iterator j;
+
+  for (j = unique_substrings.begin (); j != unique_substrings.end (); ++j)
     {
-      print_string (i->begin (), i->length ());
+      print_string (j->string, j->string_length);
       putchar ('\n');
     }
 }
@@ -553,6 +655,11 @@ main (int argc, char **argv)
               "      --unique-substrings    suppress normal output and print only the\n"
               "                             unqiue substrings that meet the required\n"
               "                             threshold\n"
+              "      --cover                suppress normal output and print only the\n"
+              "                             unique substrings that meet the required\n"
+              "                             threshold, and that are necessary to cover\n"
+              "                             all input documents.\n"
+              "                             Implies --document and --probability\n"
               "      --help     display this help and exit\n"
               "      --version  display version information\n"
               "\n"
@@ -572,6 +679,13 @@ main (int argc, char **argv)
 
   if (optind + 2 > argc || optind + 4 < argc)
     errx (EX_USAGE, "Usage: %s [OPTION]... INPUT1 INPUT2 [INPUT1-MIN [INPUT2-MAX]]", argv[0]);
+
+  if (do_cover)
+    {
+      do_unique = 1;
+      do_probability = 1;
+      do_document = 1;
+    }
 
   become_oom_friendly ();
 
@@ -621,7 +735,9 @@ main (int argc, char **argv)
 
   find_substrings (input0_threshold, input1_threshold);
 
-  if (do_unique)
+  if (do_cover)
+    find_cover ();
+  else if (do_unique)
     print_unique ();
 
   return EXIT_SUCCESS;
