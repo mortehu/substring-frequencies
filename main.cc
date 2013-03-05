@@ -123,7 +123,7 @@ print_string (I ch, size_t length)
 {
   for (; length--; ++ch)
     {
-      if (isprint (*ch))
+      if (isprint (*ch) || (*ch & 0x80))
         {
           putchar (*ch);
 
