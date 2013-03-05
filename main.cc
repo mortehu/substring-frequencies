@@ -234,7 +234,13 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
       current = input0 + input0_suffixes[i];
 
+      /* XXX: Use the shared_prefixes array to skip faster */
+
       if (current[0] == DELIMITER)
+        continue;
+
+      /* UTF-8 continuation byte */
+      if ((current[0] & 0xc0) == 0x80)
         continue;
 
       prefix = shared_prefixes[i - 1];
