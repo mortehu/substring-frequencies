@@ -163,7 +163,6 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
   size_t input1_offset = 0;
 
   const char *input0_end;
-  const char *previous;
   size_t previous_prefix = 0;
 
   if (!input0_size)
@@ -171,12 +170,23 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
   input0_end = input0 + input0_size;
 
-  previous = input0 + input0_suffixes[0];
+  std::vector<size_t> shared_prefixes;
+
+  shared_prefixes.reserve (input0_size);
+
+  for (size_t i = 0; i + 1 < input0_size; ++i)
+    {
+      const char *lhs, *rhs;
+
+      lhs = input0 + input0_suffixes[i];
+      rhs = input0 + input0_suffixes[i + 1];
+
+      shared_prefixes.push_back (common_prefix (lhs, rhs,
+                                                std::min ((size_t) (input0_end - lhs),
+                                                          (size_t) (input0_end - rhs))));
+    }
 
   std::vector<substring> stack;
-
-  /* XXX: We actually only need to calculate `common_prefix' for all adjacent
-   * suffixes, and use this to infer the calculated value */
 
   for (size_t i = 1; i < input0_size; ++i)
     {
@@ -188,8 +198,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
       if (current[0] == DELIMITER)
         continue;
 
-      prefix = common_prefix (current, previous,
-                              std::min (input0_end - current, input0_end - previous));
+      prefix = shared_prefixes[i - 1];
 
       if (prefix > previous_prefix)
         {
@@ -198,20 +207,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
           for (size_t length = prefix; j <= input0_size && length > previous_prefix; )
             {
-              const char *test;
-              size_t test_prefix;
-
-              if (j < input0_size)
-                {
-                  test = input0 + input0_suffixes[j];
-
-                  test_prefix = common_prefix (current, test,
-                                               std::min ((size_t) (input0_end - test), length));
-                }
-              else
-                test_prefix = 0;
-
-              if (test_prefix < length)
+              if (shared_prefixes[j - 1] < length)
                 {
                   substring s;
 
@@ -319,7 +315,6 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
             }
         }
 
-      previous = current;
       previous_prefix = prefix;
     }
 }
