@@ -12,4 +12,5 @@ configure.scan
 depcomp
 install-sh
 missing
+substring-collect-documents
 substring-frequencies
