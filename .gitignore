@@ -14,3 +14,4 @@ install-sh
 missing
 substring-collect-documents
 substring-frequencies
+substring-tag-rfc822
