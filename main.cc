@@ -344,7 +344,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
               if (input1_substring_count > input1_threshold)
                 continue;
 
-              if (do_probability)
+              if (do_probability || threshold)
                 {
                   size_t n_gram_count0 = 0, n_gram_count1 = 0;
 
@@ -354,7 +354,7 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                   if (s.length < input1_n_gram_counts.size ())
                     n_gram_count1 = input1_n_gram_counts[s.length];
 
-                  /* A = N-gram belongs in set 0
+                  /* A = Random N-gram belongs in set 0
                    * Bx = N-gram `x' is observed
                    */
 
@@ -367,11 +367,14 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
                   if (P_A_Bx < threshold)
                     continue;
 
-                  if (!do_unique)
+                  if (do_probability && !do_unique)
                     printf ("%.9f\t", P_A_Bx);
                 }
-              else
+
+              if (!do_probability)
                 {
+                  P_A_Bx = s.count;
+
                   if (!do_unique)
                     printf ("%zu\t%zu\t", s.count, input1_substring_count);
                 }
@@ -659,7 +662,7 @@ main (int argc, char **argv)
               "                             unique substrings that meet the required\n"
               "                             threshold, and that are necessary to cover\n"
               "                             all input documents.\n"
-              "                             Implies --document and --probability\n"
+              "                             Implies --document\n"
               "      --help     display this help and exit\n"
               "      --version  display version information\n"
               "\n"
@@ -683,7 +686,6 @@ main (int argc, char **argv)
   if (do_cover)
     {
       do_unique = 1;
-      do_probability = 1;
       do_document = 1;
     }
 
@@ -714,7 +716,7 @@ main (int argc, char **argv)
   if (!(input1_suffixes = (saidx_t *) calloc (sizeof (*input1_suffixes), input1_size)))
     errx (EX_OSERR, "calloc failed");
 
-  if (do_probability)
+  if (do_probability || threshold)
     {
       input0_n_gram_counts = count_n_grams (input0, input0_size);
       input1_n_gram_counts = count_n_grams (input1, input1_size);
