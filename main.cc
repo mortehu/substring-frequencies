@@ -27,7 +27,7 @@ static int do_probability;
 static int do_unique;
 static int do_document;
 static int do_cover;
-static double prior_bias;
+static double prior_bias = 1.0;
 static double threshold;
 
 static struct option long_options[] =
