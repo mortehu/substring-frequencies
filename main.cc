@@ -315,8 +315,6 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
               if (s.count < input0_threshold)
                 continue;
 
-              fprintf (stderr, "Hello\n");
-
               saidx_t *end, *search_result;
 
               do
