@@ -30,6 +30,7 @@ static int do_color;
 static int do_cover;
 static double prior_bias = 1.0;
 static double threshold;
+static int threshold_count;
 static int cover_threshold;
 
 static struct option long_options[] =
@@ -42,6 +43,7 @@ static struct option long_options[] =
   { "probability",       no_argument,       &do_probability,            1 },
   { "skip-prefixes",     no_argument,       &skip_samecount_prefixes,   1 },
   { "threshold",         required_argument, NULL,                     't' },
+  { "threshold-count",   required_argument, NULL,                     'T' },
   { "unique-substrings", no_argument,       &do_unique,                 1 },
   { "version",           no_argument,       &print_version,             1 },
   { "help",              no_argument,       &print_help,                1 },
@@ -205,6 +207,20 @@ add_document (std::set<size_t> &documents,
 
   documents.insert (std::distance (document_ends.begin (), i));
 }
+
+struct score_comparator
+{
+  bool operator() (const match &lhs, const match &rhs) const
+    {
+      if (lhs.score != rhs.score)
+        return lhs.score > rhs.score;
+
+      if (lhs.string_length != rhs.string_length)
+        return lhs.string_length > rhs.string_length;
+
+      return 0 >= memcmp (lhs.string, rhs.string, rhs.string_length);
+    }
+};
 
 static void
 find_substrings (size_t input0_threshold, size_t input1_threshold)
@@ -397,7 +413,20 @@ find_substrings (size_t input0_threshold, size_t input1_threshold)
 
               if (do_unique)
                 {
+                  if (threshold_count > 0
+                      && matches.size () >= (size_t) threshold_count)
+                    {
+                      if (matches.front ().score > P_A_Bx)
+                        continue;
+
+                      std::pop_heap (matches.begin (), matches.end (), score_comparator ());
+                      matches.pop_back ();
+                    }
+
                   matches.push_back (match (s.text, s.length, P_A_Bx));
+
+                  if (threshold_count > 0)
+                    std::push_heap (matches.begin (), matches.end (), score_comparator ());
 
                   continue;
                 }
@@ -440,20 +469,6 @@ count_n_grams (const char *text, size_t text_size)
 
   return result;
 }
-
-struct score_comparator
-{
-  bool operator() (const match &lhs, const match &rhs) const
-    {
-      if (lhs.score != rhs.score)
-        return lhs.score > rhs.score;
-
-      if (lhs.string_length != rhs.string_length)
-        return lhs.string_length > rhs.string_length;
-
-      return 0 >= memcmp (lhs.string, rhs.string, rhs.string_length);
-    }
-};
 
 static void
 find_cover (void)
@@ -690,6 +705,15 @@ main (int argc, char **argv)
 
           if (*endptr)
             errx (EX_USAGE, "Parse error in probability threshold, expected decimal fraction");
+
+          break;
+
+        case 'T':
+
+          threshold_count = strtol (optarg, &endptr, 0);
+
+          if (*endptr || threshold_count < 0)
+            errx (EX_USAGE, "Parse error in threshold count, expected non-negative integer");
 
           break;
 
