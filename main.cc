@@ -33,6 +33,8 @@ static double threshold;
 static int threshold_count;
 static int cover_threshold;
 
+static int stdout_is_tty;
+
 static struct option long_options[] =
 {
   { "color",             no_argument,       &do_color,                  1 },
@@ -130,7 +132,11 @@ print_string (const char *string, size_t length)
     {
       if (do_color && length)
         {
-          printf ("\033[%d;1m", *ch - 'A' + 30);
+          if (stdout_is_tty)
+            printf ("\033[%d;1m", *ch - 'A' + 30);
+          else
+            putchar (*ch);
+
           ++ch;
           --length;
         }
@@ -770,6 +776,8 @@ main (int argc, char **argv)
     }
 
   become_oom_friendly ();
+
+  stdout_is_tty = isatty (1);
 
   input0 = (const char *) map_file (argv[optind++], &input0_size);
   input1 = (const char *) map_file (argv[optind++], &input1_size);
