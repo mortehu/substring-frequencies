@@ -105,17 +105,6 @@ map_file (const char *path, size_t *ret_size)
   return map;
 }
 
-static size_t
-common_prefix (const char *lhs, const char *rhs, size_t length)
-{
-  size_t result = 0;
-
-  while (result < length && *lhs != DELIMITER && *lhs++ == *rhs++)
-    ++result;
-
-  return result;
-}
-
 struct substring
 {
   const char *text;
@@ -229,39 +218,65 @@ struct score_comparator
 };
 
 static void
+build_lcp_array (std::vector<size_t> &result,
+                 const char *text, size_t text_length,
+                 const saidx_t *suffixes, size_t suffix_count)
+{
+  const char *end = text + text_length;
+
+  std::vector<size_t> inverse;
+
+  inverse.resize (text_length, (size_t) -1);
+
+  for (size_t i = 0; i < suffix_count; ++i)
+    inverse[suffixes[i]] = i;
+
+  result.resize (suffix_count);
+
+  size_t h = 0;
+
+  for (size_t i = 0; i + 1 < text_length; ++i)
+    {
+      size_t x = inverse[i];
+
+      if (x == (size_t) -1)
+        continue;
+
+      size_t j = suffixes[x + 1];
+
+      /* The shared prefix of a string starting at offset X is at least as long
+       * as the one starting at offset X-1, minus 1.  */
+
+      const char *p1 = text + i + h;
+      const char *p0 = text + j + h;
+
+      while (p1 != end && p0 != end && *p1++ == *p0++)
+        ++h;
+
+      result[x] = h;
+
+      if (h > 0)
+        --h;
+    }
+}
+
+static void
 find_substrings (size_t input0_threshold, size_t input1_threshold)
 {
   size_t input1_offset = 0;
 
-  const char *input0_end;
   size_t previous_prefix = 0;
 
   if (!input0_suffix_count)
     return;
 
-  input0_end = input0 + input0_size;
-
   std::vector<size_t> shared_prefixes;
 
   shared_prefixes.reserve (input0_suffix_count);
 
-  for (size_t i = 0; i + 1 < input0_suffix_count; ++i)
-    {
-      const char *lhs, *rhs;
-      size_t shared_prefix;
-
-      lhs = input0 + input0_suffixes[i];
-      rhs = input0 + input0_suffixes[i + 1];
-
-      shared_prefix = common_prefix (lhs, rhs,
-                                     std::min ((size_t) (input0_end - lhs),
-                                               (size_t) (input0_end - rhs)));
-
-      if (do_color)
-        shared_prefix &= ~1;
-
-      shared_prefixes.push_back (shared_prefix);
-    }
+  build_lcp_array (shared_prefixes,
+                   input0, input0_size,
+                   input0_suffixes, input0_suffix_count);
 
   std::vector<substring> stack;
   std::set<size_t> matching_documents;
