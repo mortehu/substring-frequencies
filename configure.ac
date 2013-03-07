@@ -11,6 +11,9 @@ AC_PROG_MAKE_SET
 AC_SUBST(PACKAGES_CFLAGS)
 AC_SUBST(PACKAGES_LIBS)
 
-AC_CHECK_HEADER([divsufsort.h], [], [AC_MSG_ERROR([libdivsufsort is required.  Get it at http://code.google.com/p/libdivsufsort/])])
+AC_C_CONST
+AC_C_INLINE
+AC_DEFINE(INLINE, [inline], [for inline])
+AC_DEFINE(PROJECT_VERSION_FULL, [PACKAGE_VERSION], [Define to the version of this package.])
 
 AC_OUTPUT(Makefile)
