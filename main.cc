@@ -235,12 +235,17 @@ build_lcp_array (std::vector<size_t> &result,
 
   size_t h = 0;
 
-  for (size_t i = 0; i + 1 < text_length; ++i)
+  for (size_t i = 0; i < text_length; ++i)
     {
       size_t x = inverse[i];
 
       if (x == (size_t) -1)
-        continue;
+        {
+          if (h > 0)
+            --h;
+
+          continue;
+        }
 
       size_t j = suffixes[x + 1];
 
@@ -250,7 +255,7 @@ build_lcp_array (std::vector<size_t> &result,
       const char *p1 = text + i + h;
       const char *p0 = text + j + h;
 
-      while (p1 != end && p0 != end && *p1++ == *p0++)
+      while (p1 != end && p0 != end && (*p1 != DELIMITER) && *p1++ == *p0++)
         ++h;
 
       result[x] = h;
