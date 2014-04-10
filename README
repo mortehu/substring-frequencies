@@ -33,7 +33,6 @@ is already listed, provided both have the exact same positive counts.
 
 Building:
 
-  $ autoreconf -f -i
   $ ./configure
   $ make
   # make install
