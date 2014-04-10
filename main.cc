@@ -19,18 +19,20 @@ namespace {
 int print_version;
 int print_help;
 
+CommonSubstringFinder csf;
+
 struct option long_options[] = {
-    {"color", no_argument, &do_color, 1},
-    {"cover", no_argument, &do_cover, 1},
-    {"cover-threshold", required_argument, NULL, 'c'},
-    {"documents", no_argument, &do_document, 1},
-    {"prior-bias", required_argument, NULL, 'p'},
-    {"probability", no_argument, &do_probability, 1},
-    {"skip-prefixes", no_argument, &skip_samecount_prefixes, 1},
-    {"threshold", required_argument, NULL, 't'},
-    {"threshold-count", required_argument, NULL, 'T'},
-    {"unique-substrings", no_argument, &do_unique, 1},
-    {"words", no_argument, &do_words, 1},
+    {"color", no_argument, &csf.do_color, 1},
+    {"cover", no_argument, &csf.do_cover, 1},
+    {"cover-threshold", required_argument, nullptr, 'c'},
+    {"documents", no_argument, &csf.do_document, 1},
+    {"prior-bias", required_argument, nullptr, 'p'},
+    {"probability", no_argument, &csf.do_probability, 1},
+    {"skip-prefixes", no_argument, &csf.skip_samecount_prefixes, 1},
+    {"threshold", required_argument, nullptr, 't'},
+    {"threshold-count", required_argument, nullptr, 'T'},
+    {"unique-substrings", no_argument, &csf.do_unique, 1},
+    {"words", no_argument, &csf.do_words, 1},
     {"version", no_argument, &print_version, 1},
     {"help", no_argument, &print_help, 1},
     {0, 0, 0, 0}};
@@ -39,7 +41,7 @@ struct option long_options[] = {
 // on failure.
 void* MapFile(const char* path, size_t* ret_size) {
   off_t size;
-  void* map = NULL;
+  void* map = nullptr;
   int fd;
 
   if (-1 == (fd = open(path, O_RDONLY)))
@@ -49,7 +51,7 @@ void* MapFile(const char* path, size_t* ret_size) {
     err(EX_IOERR, "Could not seek to end of '%s'", path);
 
   if (size &&
-      MAP_FAILED == (map = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0)))
+      MAP_FAILED == (map = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0)))
     err(EX_IOERR, "Could not memory-map '%s'", path);
 
   close(fd);
@@ -76,7 +78,7 @@ void BecomeOOMFriendly(void) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  long input0_threshold = 2, input1_threshold = LONG_MAX;
+  // long input0_threshold = 2, input1_threshold = LONG_MAX;
   char* endptr;
   int i;
 
@@ -88,9 +90,9 @@ int main(int argc, char** argv) {
 
       case 'c':
 
-        cover_threshold = strtol(optarg, &endptr, 0);
+        csf.cover_threshold = strtol(optarg, &endptr, 0);
 
-        if (*endptr || cover_threshold < 0)
+        if (*endptr || csf.cover_threshold < 0)
           errx(EX_USAGE,
                "Parse error in cover threshold, expected non-negative integer");
 
@@ -98,7 +100,7 @@ int main(int argc, char** argv) {
 
       case 'p':
 
-        prior_bias = strtod(optarg, &endptr);
+        csf.prior_bias = strtod(optarg, &endptr);
 
         if (*endptr)
           errx(EX_USAGE,
@@ -108,7 +110,7 @@ int main(int argc, char** argv) {
 
       case 't':
 
-        threshold = strtod(optarg, &endptr);
+        csf.threshold = strtod(optarg, &endptr);
 
         if (*endptr)
           errx(EX_USAGE,
@@ -119,9 +121,9 @@ int main(int argc, char** argv) {
 
       case 'T':
 
-        threshold_count = strtol(optarg, &endptr, 0);
+        csf.threshold_count = strtol(optarg, &endptr, 0);
 
-        if (*endptr || threshold_count < 0)
+        if (*endptr || csf.threshold_count < 0)
           errx(EX_USAGE,
                "Parse error in threshold count, expected non-negative integer");
 
@@ -186,36 +188,38 @@ int main(int argc, char** argv) {
          argv[0]);
 
   // --cover implies --unique and --document.
-  if (do_cover) {
-    do_unique = 1;
-    do_document = 1;
+  if (csf.do_cover) {
+    csf.do_unique = 1;
+    csf.do_document = 1;
   }
 
   BecomeOOMFriendly();
 
-  stdout_is_tty = isatty(1);
+  csf.stdout_is_tty = isatty(1);
 
-  input0 = reinterpret_cast<const char*>(MapFile(argv[optind++], &input0_size));
-  input1 = reinterpret_cast<const char*>(MapFile(argv[optind++], &input1_size));
+  csf.input0 =
+      reinterpret_cast<const char*>(MapFile(argv[optind++], &csf.input0_size));
+  csf.input1 =
+      reinterpret_cast<const char*>(MapFile(argv[optind++], &csf.input1_size));
 
   if (optind < argc) {
-    input0_threshold = strtol(argv[optind++], &endptr, 0);
+    csf.input0_threshold = strtol(argv[optind++], &endptr, 0);
 
-    if (*endptr || input0_threshold < 2)
+    if (*endptr || csf.input0_threshold < 2)
       errx(EX_USAGE,
            "Parse error in INPUT1-MIN.  Expected integer greater than or equal "
            "to 2");
   }
 
   if (optind < argc) {
-    input1_threshold = strtol(argv[optind++], &endptr, 0);
+    csf.input1_threshold = strtol(argv[optind++], &endptr, 0);
 
-    if (*endptr || input1_threshold < 0)
+    if (*endptr || csf.input1_threshold < 0)
       errx(EX_USAGE,
            "Parse error in INPUT2-MAX.  Expected non-negative integer");
   }
 
-  FindSubstringFrequencies(input0_threshold, input1_threshold);
+  csf.FindSubstringFrequencies();
 
   return EXIT_SUCCESS;
 }

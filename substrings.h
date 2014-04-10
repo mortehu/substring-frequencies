@@ -1,26 +1,72 @@
 #ifndef SUBSTRINGS_H_
 #define SUBSTRINGS_H_ 1
 
-// TODO(mortehu): Move all these into a struct
+#include <cstddef>
+#include <set>
+#include <vector>
 
-extern const char *input0, *input1;
-extern size_t input0_size, input1_size;
+#include <divsufsort.h>
 
-extern int skip_samecount_prefixes;
-extern int do_probability;
-extern int do_unique;
-extern int do_document;
-extern int do_color;
-extern int do_cover;
-extern int do_words;
-extern double prior_bias;
-extern double threshold;
-extern int threshold_count;
-extern int cover_threshold;
+class CommonSubstringFinder {
+ public:
+  void FindSubstringFrequencies();
 
-extern int stdout_is_tty;
+  const char *input0, *input1;
+  size_t input0_size, input1_size;
 
-void
-FindSubstringFrequencies(size_t input0_threshold, size_t input1_threshold);
+  int skip_samecount_prefixes = 0;
+  int do_probability = 0;
+  int do_unique = 0;
+  int do_document = 0;
+  int do_color = 0;
+  int do_cover = 0;
+  int do_words = 0;
+  double prior_bias = 1.0;
+  double threshold = 0.0;
+  int threshold_count = 0;
+  int cover_threshold = 0;
+
+  int stdout_is_tty = 0;
+
+  size_t input0_threshold = 2;
+  size_t input1_threshold = LONG_MAX;
+
+ private:
+  // Adds the document containing the character at `offset' to the `documents'
+  // set.  The end point of each document is defined by `document_ends', which
+  // must be sorted.
+  void AddDocument(std::set<size_t> *documents,
+                   const std::vector<size_t> document_ends, size_t offset);
+
+  void BuildLCPArray(std::vector<size_t> &result, const char *text,
+                     size_t text_length, const saidx_t *suffixes,
+                     size_t suffix_count);
+
+  void FindSubstrings(size_t input0_threshold, size_t input1_threshold);
+
+  std::vector<size_t> CountNGrams(const char *text, size_t text_size);
+
+  void FindCover(void);
+
+  void PrintUnique();
+
+  void FindDocumentBounds(std::vector<size_t> &document_ends, const char *text,
+                          size_t text_size);
+
+  size_t FilterSuffixes(saidx_t *input, const char *text, size_t count);
+
+  void PrintString(const char *string, size_t length);
+
+  saidx_t *input0_suffixes_;
+  saidx_t *input1_suffixes_;
+  size_t input0_suffix_count_;
+  size_t input1_suffix_count_;
+
+  std::vector<size_t> input0_n_gram_counts_;
+  std::vector<size_t> input1_n_gram_counts_;
+
+  std::vector<size_t> input0_document_ends_;
+  std::vector<size_t> input1_document_ends_;
+};
 
 #endif  // !SUBSTRINGS_H_

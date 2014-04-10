@@ -20,4 +20,8 @@ AC_C_INLINE
 AC_DEFINE(INLINE, [inline], [for inline])
 AC_DEFINE(PROJECT_VERSION_FULL, [PACKAGE_VERSION], [Define to the version of this package.])
 
+AC_LANG_PUSH([C++])
+AX_CXX_COMPILE_STDCXX_11([noext])
+AC_LANG_POP([C++])
+
 AC_OUTPUT(Makefile)
