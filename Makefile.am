@@ -8,6 +8,8 @@ AM_CXXFLAGS = -Wall -g -O3
 
 substring_frequencies_SOURCES = \
   main.cc \
+  substrings.cc \
+  substrings.h \
   libdivsufsort/divsufsort.c \
   libdivsufsort/sssort.c \
   libdivsufsort/trsort.c \
