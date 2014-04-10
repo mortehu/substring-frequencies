@@ -1,6 +1,7 @@
 #ifndef SUBSTRINGS_H_
 #define SUBSTRINGS_H_ 1
 
+#include <climits>
 #include <cstddef>
 #include <set>
 #include <vector>

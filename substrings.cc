@@ -39,24 +39,24 @@ struct CompareInBlock {
   CompareInBlock(size_t length, const char *data, size_t size)
       : data_(data), size_(size) {}
 
-  // Returns true if the string at offset `lhs' is less than the string at
-  // `rhs'.  Used by lower_bound.
-  bool operator()(const saidx_t &lhs, const char *rhs) const {
+  // Returns true if the string at offset `lhs' is less than `rhs'.  Used by
+  // std::lower_bound().
+  bool operator()(const saidx_t &lhs, const Substring& rhs) const {
     size_t lhs_length = size_ - lhs;
-    int cmp;
 
-    cmp = memcmp(data_ + lhs, rhs, std::min(size_, lhs_length));
+    int cmp = memcmp(data_ + lhs, rhs.text, std::min(rhs.length, lhs_length));
 
-    return (cmp < 0 || (cmp == 0 && lhs_length < size_));
+    return cmp < 0 || (cmp == 0 && lhs_length < rhs.length);
   }
 
-  // Used by upper_bound.  Only compares equality of prefix.
-  bool operator()(const char *lhs, const saidx_t &rhs) const {
+  // Returns true if `lhs' is less than the string at offset `rhs'.  Used by
+  // upper_bound().
+  bool operator()(const Substring& lhs, const saidx_t &rhs) const {
     size_t rhs_length = size_ - rhs;
 
-    if (rhs_length < size_) return true;
+    int cmp = memcmp(lhs.text, data_ + rhs, std::min(lhs.length, rhs_length));
 
-    return 0 != memcmp(lhs, data_ + rhs, size_);
+    return cmp < 0 || (cmp == 0 && lhs.length < rhs_length);
   }
 
  private:
@@ -129,13 +129,15 @@ void CommonSubstringFinder::BuildLCPArray(std::vector<size_t> &result,
                                           const char *text, size_t text_length,
                                           const saidx_t *suffixes,
                                           size_t suffix_count) {
+  static const size_t kInvalidOffset = static_cast<size_t>(-1);
+
   const char *end = text + text_length;
 
   std::vector<size_t> inverse;
 
-  inverse.resize(text_length, (size_t) - 1);
+  inverse.resize(text_length, kInvalidOffset);
 
-  for (size_t i = 0; i < suffix_count; ++i) inverse[suffixes[i]] = i;
+  for (size_t i = 0; i + 1 < suffix_count; ++i) inverse[suffixes[i]] = i;
 
   result.resize(suffix_count);
 
@@ -144,7 +146,7 @@ void CommonSubstringFinder::BuildLCPArray(std::vector<size_t> &result,
   for (size_t i = 0; i < text_length; ++i) {
     size_t x = inverse[i];
 
-    if (x == (size_t) - 1) {
+    if (x == kInvalidOffset) {
       if (h > 0) --h;
 
       continue;
@@ -246,12 +248,17 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
 
         saidx_t *end, *search_result;
 
+        // Look for first suffix in input1 that is greater than or equal to the
+        // currently processed suffix.
+        //
+        // Instead of a linear search or a binary search, we perform a series
+        // of binary searches over at most 1024 elements.
         do {
           end = input1_suffixes_ +
                 std::min(input1_offset + 1024, input1_suffix_count_);
 
           search_result =
-              std::lower_bound(input1_suffixes_ + input1_offset, end, s.text,
+              std::lower_bound(input1_suffixes_ + input1_offset, end, s,
                                CompareInBlock(s.length, input1, input1_size));
 
           input1_offset = search_result - input1_suffixes_;
@@ -265,7 +272,7 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
                 std::min(input1_match_end + 1024, input1_suffix_count_);
 
           search_result =
-              std::upper_bound(input1_suffixes_ + input1_match_end, end, s.text,
+              std::upper_bound(input1_suffixes_ + input1_match_end, end, s,
                                CompareInBlock(s.length, input1, input1_size));
 
           input1_match_end = search_result - input1_suffixes_;
@@ -281,8 +288,9 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
           }
 
           input1_substring_count = matching_documents.size();
-        } else
+        } else {
           input1_substring_count = input1_match_end - input1_offset;
+        }
 
         if (input1_substring_count > input1_threshold) continue;
 
