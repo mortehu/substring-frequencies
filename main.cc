@@ -19,6 +19,8 @@ namespace {
 int print_version;
 int print_help;
 
+bool stdout_is_tty;
+
 CommonSubstringFinder csf;
 
 struct option long_options[] = {
@@ -73,6 +75,73 @@ void BecomeOOMFriendly(void) {
   write(fd, setting, strlen(setting));
 
   close(fd);
+}
+
+void PrintString(const char *string, size_t length) {
+  const unsigned char *ch = (const unsigned char *)string;
+
+  for (; length--; ++ch) {
+    if (csf.do_color && length) {
+      if (stdout_is_tty)
+        printf("\033[%d;1m", *ch - 'A' + 30);
+      else
+        putchar(*ch);
+
+      ++ch;
+      --length;
+    }
+
+    if (isprint(*ch) || (*ch & 0x80)) {
+      putchar(*ch);
+
+      continue;
+    }
+
+    putchar('\\');
+
+    switch (*ch) {
+      case '\a':
+        putchar('a');
+        break;
+      case '\b':
+        putchar('b');
+        break;
+      case '\t':
+        putchar('t');
+        break;
+      case '\n':
+        putchar('n');
+        break;
+      case '\v':
+        putchar('v');
+        break;
+      case '\f':
+        putchar('f');
+        break;
+      case '\r':
+        putchar('r');
+        break;
+      case '\\':
+        putchar('\\');
+        break;
+      default:
+        printf("%03o", (unsigned char)*ch);
+    }
+  }
+
+  if (csf.do_color) printf("\033[00m");
+}
+
+void PrintResult(double input0_count, size_t input1_count, const char *string, size_t length) {
+  if (!csf.do_unique) {
+    if (csf.do_probability) {
+      printf("%.9f\t", input0_count);
+    } else {
+      printf("%.f\t%zu\t", input0_count, input1_count);
+    }
+  }
+  PrintString(string, length);
+  putchar('\n');
 }
 
 }  // namespace
@@ -195,7 +264,7 @@ int main(int argc, char** argv) {
 
   BecomeOOMFriendly();
 
-  csf.stdout_is_tty = isatty(1);
+  stdout_is_tty = isatty(1);
 
   csf.input0 =
       reinterpret_cast<const char*>(MapFile(argv[optind++], &csf.input0_size));
@@ -218,6 +287,8 @@ int main(int argc, char** argv) {
       errx(EX_USAGE,
            "Parse error in INPUT2-MAX.  Expected non-negative integer");
   }
+
+  csf.output = PrintResult;
 
   csf.FindSubstringFrequencies();
 

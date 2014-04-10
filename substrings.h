@@ -9,7 +9,11 @@
 
 class CommonSubstringFinder {
  public:
+  typedef void (*OutputFunction)(double input0_count, size_t input1_count, const char *string, size_t length);
+
   void FindSubstringFrequencies();
+
+  OutputFunction output;
 
   const char *input0, *input1;
   size_t input0_size, input1_size;
@@ -25,8 +29,6 @@ class CommonSubstringFinder {
   double threshold = 0.0;
   int threshold_count = 0;
   int cover_threshold = 0;
-
-  int stdout_is_tty = 0;
 
   size_t input0_threshold = 2;
   size_t input1_threshold = LONG_MAX;
@@ -48,14 +50,12 @@ class CommonSubstringFinder {
 
   void FindCover(void);
 
-  void PrintUnique();
+  void OutputUnique();
 
   void FindDocumentBounds(std::vector<size_t> &document_ends, const char *text,
                           size_t text_size);
 
   size_t FilterSuffixes(saidx_t *input, const char *text, size_t count);
-
-  void PrintString(const char *string, size_t length);
 
   saidx_t *input0_suffixes_;
   saidx_t *input1_suffixes_;

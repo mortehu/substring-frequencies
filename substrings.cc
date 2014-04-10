@@ -2,7 +2,6 @@
 #include <cassert>
 #include <cctype>
 #include <climits>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <list>
@@ -316,15 +315,10 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
                    (s.count + input1_substring_count + prior_bias / P_A);
 
           if (P_A_Bx < threshold) continue;
-
-          if (do_probability && !do_unique) printf("%.9f\t", P_A_Bx);
         }
 
-        if (!do_probability) {
+        if (!do_probability)
           P_A_Bx = s.count;
-
-          if (!do_unique) printf("%zu\t%zu\t", s.count, input1_substring_count);
-        }
 
         if (do_unique) {
           if (threshold_count > 0 &&
@@ -343,8 +337,7 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
           continue;
         }
 
-        PrintString(s.text, s.length);
-        putchar('\n');
+        output(P_A_Bx, input1_substring_count, s.text, s.length);
       }
     }
 
@@ -411,15 +404,12 @@ void CommonSubstringFinder::FindCover(void) {
         ++k;
     }
 
-    if (hits > cover_threshold) {
-      printf("%d\t", hits);
-      PrintString(string_begin, string_length);
-      putchar('\n');
-    }
+    if (hits > cover_threshold)
+      output(hits, 0, string_begin, string_length);
   }
 }
 
-void CommonSubstringFinder::PrintUnique() {
+void CommonSubstringFinder::OutputUnique() {
   std::vector<Match> unique_substrings;
 
   std::sort(matches.begin(), matches.end(), CompareLength());
@@ -440,10 +430,8 @@ void CommonSubstringFinder::PrintUnique() {
 
   std::vector<Match>::const_iterator j;
 
-  for (j = unique_substrings.begin(); j != unique_substrings.end(); ++j) {
-    PrintString(j->string, j->string_length);
-    putchar('\n');
-  }
+  for (j = unique_substrings.begin(); j != unique_substrings.end(); ++j)
+    output(0.0, 0, j->string, j->string_length);
 }
 
 void CommonSubstringFinder::FindDocumentBounds(
@@ -493,61 +481,6 @@ size_t CommonSubstringFinder::FilterSuffixes(saidx_t *input, const char *text,
   return output - input;
 }
 
-void CommonSubstringFinder::PrintString(const char *string, size_t length) {
-  const unsigned char *ch = (const unsigned char *)string;
-
-  for (; length--; ++ch) {
-    if (do_color && length) {
-      if (stdout_is_tty)
-        printf("\033[%d;1m", *ch - 'A' + 30);
-      else
-        putchar(*ch);
-
-      ++ch;
-      --length;
-    }
-
-    if (isprint(*ch) || (*ch & 0x80)) {
-      putchar(*ch);
-
-      continue;
-    }
-
-    putchar('\\');
-
-    switch (*ch) {
-      case '\a':
-        putchar('a');
-        break;
-      case '\b':
-        putchar('b');
-        break;
-      case '\t':
-        putchar('t');
-        break;
-      case '\n':
-        putchar('n');
-        break;
-      case '\v':
-        putchar('v');
-        break;
-      case '\f':
-        putchar('f');
-        break;
-      case '\r':
-        putchar('r');
-        break;
-      case '\\':
-        putchar('\\');
-        break;
-      default:
-        printf("%03o", (unsigned char)*ch);
-    }
-  }
-
-  if (do_color) printf("\033[00m");
-}
-
 void CommonSubstringFinder::FindSubstringFrequencies() {
   if (!(input0_suffixes_ =
             (saidx_t *)calloc(sizeof(*input0_suffixes_), input0_size)))
@@ -580,5 +513,5 @@ void CommonSubstringFinder::FindSubstringFrequencies() {
   if (do_cover)
     FindCover();
   else if (do_unique)
-    PrintUnique();
+    OutputUnique();
 }
