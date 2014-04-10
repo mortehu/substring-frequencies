@@ -21,6 +21,6 @@ extern int cover_threshold;
 extern int stdout_is_tty;
 
 void
-find_substring_frequencies(size_t input0_threshold, size_t input1_threshold);
+FindSubstringFrequencies(size_t input0_threshold, size_t input1_threshold);
 
 #endif  // !SUBSTRINGS_H_
