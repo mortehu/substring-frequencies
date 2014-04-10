@@ -274,7 +274,6 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
                  end != input1_suffixes_ + input1_suffix_count_);
 
         if (do_document) {
-          fprintf(stderr, "Clear!\n");
           matching_documents.clear();
 
           for (size_t i = input1_offset; i != input1_match_end; ++i) {
