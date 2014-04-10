@@ -13,26 +13,13 @@ void CollectUnique(double input0_count, size_t input1_count, const char* string,
   unique_strings.insert(std::string(string, length));
 }
 
-void TestUniqueStrings(const std::string& input0, const std::string& input1,
-                       const std::set<std::string>& expected) {
-  CommonSubstringFinder csf;
+void CompareSets(const std::string& input0, const std::string& input1,
+                 const std::set<std::string>& expected,
+                 const std::set<std::string>& got) {
   bool ok = true;
 
-  csf.input0 = input0.data();
-  csf.input0_size = input0.size();
-  csf.input1 = input1.data();
-  csf.input1_size = input1.size();
-
-  csf.input1_threshold = 0;
-
-  csf.output = CollectUnique;
-
-  unique_strings.clear();
-  csf.FindSubstringFrequencies();
-
   std::set<std::string> missing;
-  std::set_difference(expected.begin(), expected.end(), unique_strings.begin(),
-                      unique_strings.end(),
+  std::set_difference(expected.begin(), expected.end(), got.begin(), got.end(),
                       std::inserter(missing, missing.end()));
 
   for (const std::string& s : missing) {
@@ -53,12 +40,31 @@ void TestUniqueStrings(const std::string& input0, const std::string& input1,
   }
 
   if (!ok) {
-    fprintf(stderr, "Input 0 was: \"%.*s\"\n",
-            static_cast<int>(csf.input0_size), csf.input0);
-    fprintf(stderr, "Input 1 was: \"%.*s\"\n",
-            static_cast<int>(csf.input1_size), csf.input1);
+    fprintf(stderr, "Input 0 was: \"%.*s\"\n", static_cast<int>(input0.size()),
+            input0.data());
+    fprintf(stderr, "Input 1 was: \"%.*s\"\n", static_cast<int>(input1.size()),
+            input1.data());
     abort();
   }
+}
+
+void TestUniqueStrings(const std::string& input0, const std::string& input1,
+                       const std::set<std::string>& expected) {
+  CommonSubstringFinder csf;
+
+  csf.input0 = input0.data();
+  csf.input0_size = input0.size();
+  csf.input1 = input1.data();
+  csf.input1_size = input1.size();
+
+  csf.input1_threshold = 0;
+
+  csf.output = CollectUnique;
+
+  unique_strings.clear();
+  csf.FindSubstringFrequencies();
+
+  CompareSets(input0, input1, expected, unique_strings);
 }
 
 }  // namespace
@@ -71,6 +77,11 @@ int main(int argc, char** argv) {
   TestUniqueStrings("aa aa", "xyz", {"a", "aa"});
 
   TestUniqueStrings("aa aa", "a", {"aa"});
+
+  TestUniqueStrings("cccAcccBcccCccc", "ccd dcc ccd dcc dcd",
+                    {"c", "cc", "ccc"});
+
+  TestUniqueStrings("cccAcccBcccCccc", "cccAcccBcccCccc", {});
 
   return EXIT_SUCCESS;
 }
