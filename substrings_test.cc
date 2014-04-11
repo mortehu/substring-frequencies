@@ -111,8 +111,7 @@ int main(int argc, char** argv) {
 
   TestUniqueStrings("aa aa", "a", {"aa"});
 
-  TestUniqueStrings("cccAcccBcccCccc", "ccd dcc ccd dcc dcd",
-                    {"c", "cc", "ccc"});
+  TestUniqueStrings("cccAcccBcccCccc", "ccd dcc ccd dcc dcd", {"ccc"});
 
   TestUniqueStrings("cccAcccBcccCccc", "cccAcccBcccCccc", {});
 
@@ -124,6 +123,10 @@ int main(int argc, char** argv) {
 
   TestDocuments(MakeDocuments("ccc|ccc|ccc|ccc", '|'),
                 MakeDocuments("ccc|ccc|ccc|ccc|", '|'), {});
+
+  TestUniqueStrings("abcabc", "", {"a", "ab", "abc", "bc", "b", "c"});
+
+  TestUniqueStrings("abcabc", "abx", {"abc", "bc", "c"});
 
   return EXIT_SUCCESS;
 }

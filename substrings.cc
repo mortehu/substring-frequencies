@@ -36,8 +36,7 @@ struct Substring {
 };
 
 struct CompareInBlock {
-  CompareInBlock(size_t length, const char* data, size_t size)
-      : data_(data), size_(size) {}
+  CompareInBlock(const char* data, size_t size) : data_(data), size_(size) {}
 
   // Returns true if the string at offset `lhs' is less than `rhs'.  Used by
   // std::lower_bound().
@@ -46,7 +45,8 @@ struct CompareInBlock {
 
     int cmp = memcmp(data_ + lhs, rhs.text, std::min(rhs.length, lhs_length));
 
-    return cmp < 0 || (cmp == 0 && lhs_length < rhs.length);
+    return cmp < 0 ||
+           (cmp == 0 && lhs_length < rhs.length && rhs.text[lhs_length]);
   }
 
   // Returns true if `lhs' is less than the string at offset `rhs'.  Used by
@@ -259,37 +259,43 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
 
           search_result =
               std::lower_bound(input1_suffixes_ + input1_offset, end, s,
-                               CompareInBlock(s.length, input1, input1_size));
+                               CompareInBlock(input1, input1_size));
 
           input1_offset = search_result - input1_suffixes_;
         } while (search_result == end &&
                  end != input1_suffixes_ + input1_suffix_count_);
 
-        input1_match_end = input1_offset;
-
-        do {
-          end = input1_suffixes_ +
-                std::min(input1_match_end + 1024, input1_suffix_count_);
-
-          search_result =
-              std::upper_bound(input1_suffixes_ + input1_match_end, end, s,
-                               CompareInBlock(s.length, input1, input1_size));
-
-          input1_match_end = search_result - input1_suffixes_;
-        } while (search_result == end &&
-                 end != input1_suffixes_ + input1_suffix_count_);
-
-        if (do_document) {
-          matching_documents.clear();
-
-          for (size_t i = input1_offset; i != input1_match_end; ++i) {
-            AddDocument(&matching_documents, input1_document_ends_,
-                        input1_suffixes_[i]);
-          }
-
-          input1_substring_count = matching_documents.size();
+        if (input1_offset == input1_suffix_count_ ||
+            memcmp(s.text, &input1[input1_suffixes_[input1_offset]],
+                   s.length)) {
+          input1_substring_count = 0;
         } else {
-          input1_substring_count = input1_match_end - input1_offset;
+          input1_match_end = input1_offset;
+
+          do {
+            end = input1_suffixes_ +
+                  std::min(input1_match_end + 1024, input1_suffix_count_);
+
+            search_result =
+                std::upper_bound(input1_suffixes_ + input1_match_end, end, s,
+                                 CompareInBlock(input1, input1_size));
+
+            input1_match_end = search_result - input1_suffixes_;
+          } while (search_result == end &&
+                   end != input1_suffixes_ + input1_suffix_count_);
+
+          if (do_document) {
+            matching_documents.clear();
+
+            for (size_t i = input1_offset; i <= input1_match_end; ++i) {
+              AddDocument(&matching_documents, input1_document_ends_,
+                          input1_suffixes_[i]);
+            }
+
+            input1_substring_count = matching_documents.size();
+          } else {
+            input1_substring_count = input1_match_end - input1_offset + 1;
+          }
         }
 
         if (input1_substring_count > input1_threshold) continue;
