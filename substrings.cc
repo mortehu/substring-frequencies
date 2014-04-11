@@ -18,30 +18,30 @@
 namespace {
 
 struct Match {
-  const char *string;
+  const char* string;
   size_t string_length;
 
   double score;
 
-  Match(const char *string, size_t string_length, double score)
+  Match(const char* string, size_t string_length, double score)
       : string(string), string_length(string_length), score(score) {}
 };
 
 std::vector<Match> matches;
 
 struct Substring {
-  const char *text;
+  const char* text;
   size_t length;
   size_t count;
 };
 
 struct CompareInBlock {
-  CompareInBlock(size_t length, const char *data, size_t size)
+  CompareInBlock(size_t length, const char* data, size_t size)
       : data_(data), size_(size) {}
 
   // Returns true if the string at offset `lhs' is less than `rhs'.  Used by
   // std::lower_bound().
-  bool operator()(const saidx_t &lhs, const Substring& rhs) const {
+  bool operator()(const saidx_t& lhs, const Substring& rhs) const {
     size_t lhs_length = size_ - lhs;
 
     int cmp = memcmp(data_ + lhs, rhs.text, std::min(rhs.length, lhs_length));
@@ -51,21 +51,21 @@ struct CompareInBlock {
 
   // Returns true if `lhs' is less than the string at offset `rhs'.  Used by
   // upper_bound().
-  bool operator()(const Substring& lhs, const saidx_t &rhs) const {
+  bool operator()(const Substring& lhs, const saidx_t& rhs) const {
     size_t rhs_length = size_ - rhs;
-
     int cmp = memcmp(lhs.text, data_ + rhs, std::min(lhs.length, rhs_length));
 
-    return cmp < 0 || (cmp == 0 && lhs.length < rhs_length);
+    return cmp < 0 ||
+           (cmp == 0 && lhs.length < rhs_length && data_[rhs + lhs.length]);
   }
 
  private:
-  const char *data_;
+  const char* data_;
   size_t size_;
 };
 
 struct CompareScore {
-  bool operator()(const Match &lhs, const Match &rhs) const {
+  bool operator()(const Match& lhs, const Match& rhs) const {
     if (lhs.score != rhs.score) return lhs.score > rhs.score;
 
     if (lhs.string_length != rhs.string_length)
@@ -76,9 +76,9 @@ struct CompareScore {
 };
 
 struct CompareSuperstrings {
-  CompareSuperstrings(const Match &base) : base(base) {}
+  CompareSuperstrings(const Match& base) : base(base) {}
 
-  bool operator()(const Match &rhs) const {
+  bool operator()(const Match& rhs) const {
     return nullptr != memmem(base.string, base.string_length, rhs.string,
                              rhs.string_length);
   }
@@ -88,7 +88,7 @@ struct CompareSuperstrings {
 };
 
 struct CompareLength {
-  bool operator()(const Match &lhs, const Match &rhs) const {
+  bool operator()(const Match& lhs, const Match& rhs) const {
     if (lhs.string_length != rhs.string_length)
       return lhs.string_length < rhs.string_length;
 
@@ -97,7 +97,7 @@ struct CompareLength {
 };
 
 struct StringComparator {
-  bool operator()(const Match &lhs, const Match &rhs) const {
+  bool operator()(const Match& lhs, const Match& rhs) const {
     int ret;
 
     ret = memcmp(lhs.string, rhs.string,
@@ -115,9 +115,9 @@ struct StringComparator {
 // Adds the document containing the character at `offset' to the `documents'
 // set.  The end point of each document is defined by `document_ends', which
 // must be sorted.
-void CommonSubstringFinder::AddDocument(std::set<size_t> *documents,
-                                        const std::vector<size_t> document_ends,
-                                        size_t offset) {
+void CommonSubstringFinder::AddDocument(
+    std::set<size_t>* documents, const std::vector<size_t>& document_ends,
+    size_t offset) {
   std::vector<size_t>::const_iterator i;
 
   i = std::lower_bound(document_ends.begin(), document_ends.end(), offset);
@@ -125,13 +125,13 @@ void CommonSubstringFinder::AddDocument(std::set<size_t> *documents,
   documents->insert(std::distance(document_ends.begin(), i));
 }
 
-void CommonSubstringFinder::BuildLCPArray(std::vector<size_t> &result,
-                                          const char *text, size_t text_length,
-                                          const saidx_t *suffixes,
+void CommonSubstringFinder::BuildLCPArray(std::vector<size_t>& result,
+                                          const char* text, size_t text_length,
+                                          const saidx_t* suffixes,
                                           size_t suffix_count) {
   static const size_t kInvalidOffset = static_cast<size_t>(-1);
 
-  const char *end = text + text_length;
+  const char* end = text + text_length;
 
   std::vector<size_t> inverse;
 
@@ -157,8 +157,8 @@ void CommonSubstringFinder::BuildLCPArray(std::vector<size_t> &result,
     /* The shared prefix of a string starting at offset X is at least as long
      * as the one starting at offset X-1, minus 1.  */
 
-    const char *p1 = text + i + h;
-    const char *p0 = text + j + h;
+    const char* p1 = text + i + h;
+    const char* p0 = text + j + h;
 
     while (p1 != end && p0 != end && (*p1 != DELIMITER) && *p1++ == *p0++) ++h;
 
@@ -246,7 +246,7 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
 
         if (s.count < input0_threshold) continue;
 
-        saidx_t *end, *search_result;
+        saidx_t* end, *search_result;
 
         // Look for first suffix in input1 that is greater than or equal to the
         // currently processed suffix.
@@ -325,8 +325,7 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
           if (P_A_Bx < threshold) continue;
         }
 
-        if (!do_probability)
-          P_A_Bx = s.count;
+        if (!do_probability) P_A_Bx = s.count;
 
         if (do_unique) {
           if (threshold_count > 0 &&
@@ -353,17 +352,17 @@ void CommonSubstringFinder::FindSubstrings(size_t input0_threshold,
   }
 }
 
-std::vector<size_t> CommonSubstringFinder::CountNGrams(const char *text,
+std::vector<size_t> CommonSubstringFinder::CountNGrams(const char* text,
                                                        size_t text_size) {
-  const char *text_end = text + text_size;
-  const char *ch, *next;
+  const char* text_end = text + text_size;
+  const char* ch, *next;
 
   std::vector<size_t> result;
 
   ch = text;
 
   while (ch != text_end) {
-    if (!(next = (const char *)memchr(ch, DELIMITER, text_end - ch)))
+    if (!(next = (const char*)memchr(ch, DELIMITER, text_end - ch)))
       next = text_end;
 
     if (result.size() <= (size_t)(next - ch)) result.resize(next - ch + 1);
@@ -379,8 +378,8 @@ std::vector<size_t> CommonSubstringFinder::CountNGrams(const char *text,
 }
 
 void CommonSubstringFinder::FindCover(void) {
-  std::list<std::pair<const char *, size_t> > remaining_documents;
-  const char *start = input0, *end;
+  std::list<std::pair<const char*, size_t> > remaining_documents;
+  const char* start = input0, *end;
   size_t i;
 
   std::sort(matches.begin(), matches.end(), CompareScore());
@@ -397,10 +396,10 @@ void CommonSubstringFinder::FindCover(void) {
 
   for (j = matches.begin(); j != matches.end() && !remaining_documents.empty();
        ++j) {
-    const char *string_begin = j->string;
+    const char* string_begin = j->string;
     size_t string_length = j->string_length;
 
-    std::list<std::pair<const char *, size_t> >::iterator k;
+    std::list<std::pair<const char*, size_t> >::iterator k;
     int hits = 0;
 
     for (k = remaining_documents.begin(); k != remaining_documents.end();) {
@@ -412,8 +411,7 @@ void CommonSubstringFinder::FindCover(void) {
         ++k;
     }
 
-    if (hits > cover_threshold)
-      output(hits, 0, string_begin, string_length);
+    if (hits > cover_threshold) output(hits, 0, string_begin, string_length);
   }
 }
 
@@ -443,14 +441,14 @@ void CommonSubstringFinder::OutputUnique() {
 }
 
 void CommonSubstringFinder::FindDocumentBounds(
-    std::vector<size_t> &document_ends, const char *text, size_t text_size) {
-  const char *text_end = text + text_size;
-  const char *ch, *next;
+    std::vector<size_t>& document_ends, const char* text, size_t text_size) {
+  const char* text_end = text + text_size;
+  const char* ch, *next;
 
   ch = text;
 
   while (ch != text_end) {
-    if (!(next = (const char *)memchr(ch, DELIMITER, text_end - ch)))
+    if (!(next = (const char*)memchr(ch, DELIMITER, text_end - ch)))
       next = text_end;
 
     document_ends.push_back(next - text);
@@ -463,9 +461,9 @@ void CommonSubstringFinder::FindDocumentBounds(
   assert(!document_ends.empty());
 }
 
-size_t CommonSubstringFinder::FilterSuffixes(saidx_t *input, const char *text,
+size_t CommonSubstringFinder::FilterSuffixes(saidx_t* input, const char* text,
                                              size_t count) {
-  saidx_t *output, *i, *end;
+  saidx_t* output, *i, *end;
 
   i = input;
   end = i + count;
@@ -491,11 +489,11 @@ size_t CommonSubstringFinder::FilterSuffixes(saidx_t *input, const char *text,
 
 void CommonSubstringFinder::FindSubstringFrequencies() {
   if (!(input0_suffixes_ =
-            (saidx_t *)calloc(sizeof(*input0_suffixes_), input0_size)))
+            (saidx_t*)calloc(sizeof(*input0_suffixes_), input0_size)))
     errx(EX_OSERR, "calloc failed");
 
   if (!(input1_suffixes_ =
-            (saidx_t *)calloc(sizeof(*input1_suffixes_), input1_size)))
+            (saidx_t*)calloc(sizeof(*input1_suffixes_), input1_size)))
     errx(EX_OSERR, "calloc failed");
 
   if (do_probability || threshold) {
@@ -508,8 +506,8 @@ void CommonSubstringFinder::FindSubstringFrequencies() {
     FindDocumentBounds(input1_document_ends_, input1, input1_size);
   }
 
-  divsufsort((const sauchar_t *)input0, input0_suffixes_, input0_size);
-  divsufsort((const sauchar_t *)input1, input1_suffixes_, input1_size);
+  divsufsort((const sauchar_t*)input0, input0_suffixes_, input0_size);
+  divsufsort((const sauchar_t*)input1, input1_suffixes_, input1_size);
 
   input0_suffix_count_ = FilterSuffixes(input0_suffixes_, input0, input0_size);
   input1_suffix_count_ = FilterSuffixes(input1_suffixes_, input1, input1_size);

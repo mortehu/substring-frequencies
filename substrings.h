@@ -39,7 +39,7 @@ class CommonSubstringFinder {
   // set.  The end point of each document is defined by `document_ends', which
   // must be sorted.
   void AddDocument(std::set<size_t> *documents,
-                   const std::vector<size_t> document_ends, size_t offset);
+                   const std::vector<size_t>& document_ends, size_t offset);
 
   void BuildLCPArray(std::vector<size_t> &result, const char *text,
                      size_t text_length, const saidx_t *suffixes,

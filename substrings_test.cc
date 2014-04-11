@@ -67,6 +67,39 @@ void TestUniqueStrings(const std::string& input0, const std::string& input1,
   CompareSets(input0, input1, expected, unique_strings);
 }
 
+std::string MakeDocuments(const std::string& input, char sep) {
+  std::string result;
+  for (char ch : input) {
+    if (ch == sep)
+      result.push_back(0);
+    else
+      result.push_back(ch);
+  }
+
+  return result;
+}
+
+void TestDocuments(const std::string& input0, const std::string& input1,
+                   const std::set<std::string>& expected) {
+  CommonSubstringFinder csf;
+
+  csf.input0 = input0.data();
+  csf.input0_size = input0.size();
+  csf.input1 = input1.data();
+  csf.input1_size = input1.size();
+
+  csf.input1_threshold = 0;
+
+  csf.do_document = 1;
+
+  csf.output = CollectUnique;
+
+  unique_strings.clear();
+  csf.FindSubstringFrequencies();
+
+  CompareSets(input0, input1, expected, unique_strings);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -82,6 +115,15 @@ int main(int argc, char** argv) {
                     {"c", "cc", "ccc"});
 
   TestUniqueStrings("cccAcccBcccCccc", "cccAcccBcccCccc", {});
+
+  TestDocuments(MakeDocuments("ccc|ccc|ccc|ccc", '|'),
+                MakeDocuments("ccd|dcc|ccd|dcc|dcd", '|'), {"ccc"});
+
+  TestDocuments(MakeDocuments("ccc|ccc|ccc|ccc", '|'),
+                MakeDocuments("ccc|ccc|ccc|ccc|ccc", '|'), {});
+
+  TestDocuments(MakeDocuments("ccc|ccc|ccc|ccc", '|'),
+                MakeDocuments("ccc|ccc|ccc|ccc|", '|'), {});
 
   return EXIT_SUCCESS;
 }
