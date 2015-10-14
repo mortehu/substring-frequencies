@@ -8,9 +8,10 @@ namespace {
 
 std::set<std::string> unique_strings;
 
-void CollectUnique(double input0_count, size_t input1_count, const char* string,
-                   size_t length) {
-  unique_strings.insert(std::string(string, length));
+void CollectUnique(size_t input0_count, size_t input1_count, double log_odds,
+                   const ev::StringRef& string) {
+  if (input1_count) return;
+  unique_strings.emplace(string.str());
 }
 
 void CompareSets(const std::string& input0, const std::string& input1,
@@ -57,7 +58,8 @@ void TestUniqueStrings(const std::string& input0, const std::string& input1,
   csf.input1 = input1.data();
   csf.input1_size = input1.size();
 
-  csf.input1_threshold = 0;
+  csf.threshold_count = 1;
+  csf.filter_redundant_features = 0;
 
   csf.output = CollectUnique;
 
@@ -88,9 +90,7 @@ void TestDocuments(const std::string& input0, const std::string& input1,
   csf.input1 = input1.data();
   csf.input1_size = input1.size();
 
-  csf.input1_threshold = 0;
-
-  csf.do_document = 1;
+  csf.threshold_count = 1;
 
   csf.output = CollectUnique;
 
