@@ -4,8 +4,9 @@
 *.status
 .*.sw?
 .deps/
-Makefile
-configure.scan
-substring-collect-documents
-substring-frequencies
-substring-tag-rfc822
+/Makefile
+/configure.scan
+/libsubstrings.a
+/substring-collect-documents
+/substring-frequencies
+/substring-tag-rfc822
