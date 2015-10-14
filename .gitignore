@@ -2,6 +2,7 @@
 *.log
 *.o
 *.status
+*.trs
 .*.sw?
 .deps/
 /Makefile
@@ -10,3 +11,4 @@
 /substring-collect-documents
 /substring-frequencies
 /substring-tag-rfc822
+/substring_test
