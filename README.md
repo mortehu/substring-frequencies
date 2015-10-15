@@ -1,5 +1,7 @@
 This program takes two files as inputs, and prints strings that are
-over-represented in one file or the other.
+over-represented in one file or the other.  This is achieved by concatenating
+the two files, constructing a suffix array and an LCP array, and then counting
+the number of occurrences of every substring of every length.
 
 The inputs may contain `NUL`-delimited documents, in which case each substring
 will be counted only once for each document it occurs in.  To enable this
