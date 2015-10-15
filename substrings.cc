@@ -224,7 +224,7 @@ void CommonSubstringFinder::AddSuffix(const ev::StringRef& substring,
       (input0_denominator + prior_bias) / (input1_denominator + prior_bias);
   const auto log_odds = std::log(A_given_K_odds / prior_odds);
 
-  if (threshold && std::fabs(log_odds) < std::log(threshold / (1 - threshold)))
+  if (threshold && std::fabs(log_odds) < threshold)
     return;
 
   std::lock_guard<std::mutex> lk(output_mutex_);
