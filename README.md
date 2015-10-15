@@ -1,10 +1,9 @@
-This program takes two files as inputs, and prints the strings that occur at
-least twice in the first input, together with the number of times they occur in
-the second input.
+This program takes two files as inputs, and prints strings that are
+over-represented in one file or the other.
 
-The user can provide thresholds so that only strings that occur at least X
-times in input 1 are printed, and only strings that occur at most Y times in
-input 2 are printed.
+The inputs may contain `NUL`-delimited documents, in which case each substring
+will be counted only once for each document it occurs in.  To enable this
+behavior, use `--document`.
 
 Example run:
 
