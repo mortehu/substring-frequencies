@@ -96,12 +96,14 @@ class StringRef {
     return result;
   }
 
+  // Returns a pointer to the last occurrence of the given character in a
+  // string, or `end()` if no match is found.
   const char* rfind(char ch) const {
-    auto result = reinterpret_cast<const char*>(memrchr(data_, ch, size_));
+    for (auto result = end(); result-- != begin(); ) {
+      if (*result == ch) return result;
+    }
 
-    if (!result) return end();
-
-    return result;
+    return end();
   }
 
   const char* find_first_of(const char* set, size_t from = 0) const {
