@@ -1,6 +1,5 @@
 bin_PROGRAMS = \
   substring-frequencies \
-  substring-collect-documents \
   substring-tag-rfc822
 noinst_LIBRARIES = libsubstrings.a
 check_PROGRAMS = \
@@ -21,8 +20,6 @@ libsubstrings_a_SOURCES = \
   libdivsufsort/utils.c \
   libdivsufsort/lfs.h \
   libdivsufsort/divsufsort.h
-
-substring_collect_documents_SOURCES = collect.c
 
 substring_tag_rfc822_SOURCES = tag-rfc822.c
 

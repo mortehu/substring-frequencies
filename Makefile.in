@@ -88,7 +88,6 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = substring-frequencies$(EXEEXT) \
-	substring-collect-documents$(EXEEXT) \
 	substring-tag-rfc822$(EXEEXT)
 check_PROGRAMS = substrings_test$(EXEEXT)
 subdir = .
@@ -120,10 +119,6 @@ am_libsubstrings_a_OBJECTS = substrings.$(OBJEXT) \
 libsubstrings_a_OBJECTS = $(am_libsubstrings_a_OBJECTS)
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_substring_collect_documents_OBJECTS = collect.$(OBJEXT)
-substring_collect_documents_OBJECTS =  \
-	$(am_substring_collect_documents_OBJECTS)
-substring_collect_documents_LDADD = $(LDADD)
 am_substring_frequencies_OBJECTS = main.$(OBJEXT)
 substring_frequencies_OBJECTS = $(am_substring_frequencies_OBJECTS)
 substring_frequencies_DEPENDENCIES = libsubstrings.a
@@ -174,12 +169,9 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libsubstrings_a_SOURCES) \
-	$(substring_collect_documents_SOURCES) \
-	$(substring_frequencies_SOURCES) \
+SOURCES = $(libsubstrings_a_SOURCES) $(substring_frequencies_SOURCES) \
 	$(substring_tag_rfc822_SOURCES) $(substrings_test_SOURCES)
 DIST_SOURCES = $(libsubstrings_a_SOURCES) \
-	$(substring_collect_documents_SOURCES) \
 	$(substring_frequencies_SOURCES) \
 	$(substring_tag_rfc822_SOURCES) $(substrings_test_SOURCES)
 am__can_run_installinfo = \
@@ -411,7 +403,7 @@ TEST_LOGS = $(am__test_logs2:.test.log=.log)
 TEST_LOG_DRIVER = $(SHELL) $(top_srcdir)/test-driver
 TEST_LOG_COMPILE = $(TEST_LOG_COMPILER) $(AM_TEST_LOG_FLAGS) \
 	$(TEST_LOG_FLAGS)
-am__DIST_COMMON = $(srcdir)/Makefile.in README ar-lib compile depcomp \
+am__DIST_COMMON = $(srcdir)/Makefile.in ar-lib compile depcomp \
 	install-sh missing test-driver
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
@@ -516,6 +508,7 @@ pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
+runstatedir = @runstatedir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
@@ -539,7 +532,6 @@ libsubstrings_a_SOURCES = \
   libdivsufsort/lfs.h \
   libdivsufsort/divsufsort.h
 
-substring_collect_documents_SOURCES = collect.c
 substring_tag_rfc822_SOURCES = tag-rfc822.c
 substrings_test_SOURCES = substrings_test.cc
 substrings_test_LDADD = libsubstrings.a
@@ -649,10 +641,6 @@ clean-binPROGRAMS:
 clean-checkPROGRAMS:
 	-test -z "$(check_PROGRAMS)" || rm -f $(check_PROGRAMS)
 
-substring-collect-documents$(EXEEXT): $(substring_collect_documents_OBJECTS) $(substring_collect_documents_DEPENDENCIES) $(EXTRA_substring_collect_documents_DEPENDENCIES) 
-	@rm -f substring-collect-documents$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(substring_collect_documents_OBJECTS) $(substring_collect_documents_LDADD) $(LIBS)
-
 substring-frequencies$(EXEEXT): $(substring_frequencies_OBJECTS) $(substring_frequencies_DEPENDENCIES) $(EXTRA_substring_frequencies_DEPENDENCIES) 
 	@rm -f substring-frequencies$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(substring_frequencies_OBJECTS) $(substring_frequencies_LDADD) $(LIBS)
@@ -672,7 +660,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/collect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/substrings.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/substrings_test.Po@am__quote@
