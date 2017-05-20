@@ -12,8 +12,8 @@
 #include <err.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <sysexits.h>
 #include <sys/mman.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include "base/string.h"
@@ -214,6 +214,8 @@ int main(int argc, char** argv) {
         "cover\n"
         "                             all input documents.\n"
         "                             Implies --document\n"
+        "      --no-filter            don't attempt to filter redundant "
+        "features\n"
         "      --help     display this help and exit\n"
         "      --version  display version information\n"
         "\n"
