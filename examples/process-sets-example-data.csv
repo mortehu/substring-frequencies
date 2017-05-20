@@ -1,0 +1,15 @@
+file,label
+../base/string.h,0
+../base/stringref.h,0
+../libdivsufsort/divsufsort.c,1
+../libdivsufsort/divsufsort.h,0
+../libdivsufsort/divsufsort_private.h,0
+../libdivsufsort/lfs.h,0
+../libdivsufsort/sssort.c,1
+../libdivsufsort/trsort.c,1
+../libdivsufsort/utils.c,1
+../main.cc,1
+../substrings.cc,1
+../substrings.h,0
+../substrings_test.cc,1
+../tag-rfc822.c,1
