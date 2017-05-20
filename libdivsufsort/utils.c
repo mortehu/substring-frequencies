@@ -26,6 +26,8 @@
 
 #include "divsufsort_private.h"
 
+#include <stdlib.h>
+
 
 /*- Private Function -*/
 
