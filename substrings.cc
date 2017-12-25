@@ -123,6 +123,12 @@ void CommonSubstringFinder::FindSubstrings() {
     for (size_t prefix_prefix_length = prefix_length;
          j <= suffixes_.size() &&
              prefix_prefix_length > previous_prefix_length;) {
+      // Avoid prefixes that terminate inside a UTF-8 character.
+      if (first_occurence + prefix_prefix_length < input0_size && (input0[first_occurence + prefix_prefix_length] & 0xc0) == 0x80) {
+        --prefix_prefix_length;
+        continue;
+      }
+
       if (shared_prefixes[j - 1] < prefix_prefix_length) {
         AddSuffix(ev::StringRef(input0 + first_occurence, prefix_prefix_length),
                   &suffixes_[first_match], count, input0_threshold,
